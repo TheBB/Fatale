@@ -11,12 +11,12 @@
     @test grad == I
 
     @noallocs begin
-        trf = Empty(4)
         initial = @SVector rand(4)
         grad = SMatrix{4,4,Float64}(I)
         @bench begin
-            $trf($initial)
-            $trf($initial, $grad)
+            trf = Empty(4)
+            trf($initial)
+            trf($initial, $grad)
         end
     end
 end
@@ -35,12 +35,12 @@ end
     @test grad == I
 
     @noallocs begin
-        trf = Shift(@SVector rand(4))
         initial = @SVector rand(4)
         grad = SMatrix{4,4,Float64}(I)
         @bench begin
-            $trf($initial)
-            $trf($initial, $grad)
+            trf = Shift(@SVector rand(4))
+            trf($initial)
+            trf($initial, $grad)
         end
     end
 end
