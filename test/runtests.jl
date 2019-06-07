@@ -5,6 +5,7 @@ using Random
 using StaticArrays
 
 using Fatale.Transforms
+using Fatale.Elements
 
 
 "Check that the result of `expr`, which should be a benchmark, has no
@@ -25,4 +26,8 @@ end
 
 @testset "Transforms" begin
     include("Transforms.jl")
+end
+
+@testset "Elements" begin
+    include("Elements.jl")
 end
