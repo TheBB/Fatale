@@ -9,6 +9,16 @@
     (point, grad) = trf(initial, grad)
     @test point == [5.0, initial[1] + 5.0]
     @test grad == [0 1; 1 0]
+
+    @noallocs begin
+        initial = @SVector rand(1)
+        grad = SMatrix{1,1,Float64}(I)
+        @bench begin
+            trf = Chain(Updim{1,2}(1.0), Shift(SVector(4.0, 5.0)), Empty(2))
+            trf($initial)
+            trf($initial, $grad)
+        end
+    end
 end
 
 
