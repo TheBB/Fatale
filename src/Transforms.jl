@@ -4,8 +4,10 @@ import Base.Iterators: flatten
 import Base: @_inline_meta
 using StaticArrays
 
+using ..Utils
+
 export Transform
-export Empty, Shift, Updim
+export Chain, Empty, Shift, Updim
 
 
 """
@@ -23,6 +25,47 @@ abstract type Transform{From, To, R<:Real} end
 @inline fromdims(t::T) where T<:Transform = fromdims(T)
 @inline todims(t::T) where T<:Transform = todims(T)
 @inline eltype(t::T) where T<:Transform = eltype(T)
+
+
+"""
+    Chain(transforms...)
+
+Construct a single chain transformation from a sequence of
+transformations to apply in order.
+"""
+struct Chain{K<:Tuple{Vararg{Transform}}, From, To, R} <: Transform{From, To, R}
+    chain :: K
+end
+
+@generated function Chain(transforms...)
+    from = fromdims(transforms[1])
+    to = todims(transforms[end])
+    R = eltype(transforms[1])
+    @assert all(R == eltype(trf) for trf in transforms)
+    @assert all(todims(prev) == fromdims(next) for (prev, next) in chain(transforms))
+    quote
+        @_inline_meta
+        Chain{Tuple{$(transforms...)}, $from, $to, $R}(transforms)
+    end
+end
+
+@generated function (self::Chain{K})(point) where K
+    codes = [:(point = self.chain[$i](point)) for i in 1:length(K.parameters)]
+    quote
+        @_inline_meta
+        $(codes...)
+        point
+    end
+end
+
+@generated function (self::Chain{K})(point, grad) where K
+    codes = [:((point, grad) = self.chain[$i](point, grad)) for i in 1:length(K.parameters)]
+    quote
+        @_inline_meta
+        $(codes...)
+        (point, grad)
+    end
+end
 
 
 """

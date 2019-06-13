@@ -1,3 +1,17 @@
+@testset "Chain" begin
+    Random.seed!(201906131608)
+
+    trf = Chain(Updim{1,2}(1.0), Shift(SVector(4.0, 5.0)), Empty(2))
+    initial = @SVector rand(1)
+    @test trf(initial) == [5.0, initial[1] + 5.0]
+
+    grad = SMatrix{1,1,Float64}(I)
+    (point, grad) = trf(initial, grad)
+    @test point == [5.0, initial[1] + 5.0]
+    @test grad == [0 1; 1 0]
+end
+
+
 @testset "Empty" begin
     Random.seed!(201904121653)
 
