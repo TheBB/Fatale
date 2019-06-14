@@ -49,3 +49,19 @@ end
         @bench $func($sub, $quadpt)
     end
 end
+
+
+@testset "Monomials" begin
+    Random.seed!(201906141455)
+    func = optimize(Monomials(localpoint(3), 4))
+    element = Element(3)
+    quadpt = @SVector [1.0, 2.0, 3.0]
+    @test func(element, quadpt) ≈ [1 1 1 1 1; 1 2 4 8 16; 1 3 9 27 81]
+
+    @noallocs begin
+        func = optimize(Monomials(localpoint(3), 4))
+        element = Element(3)
+        quadpt = @SVector [1.0, 2.0, 3.0]
+        @bench $func($element, $quadpt)
+    end
+end

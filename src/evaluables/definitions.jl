@@ -54,3 +54,38 @@ arguments(self::GetProperty) = [self.arg]
         arg.$S
     end
 end
+
+
+"""
+    Monomials(arg, degree)
+
+Computes all monomials of *arg* up to *degree*, yielding an array of
+size (size(arg)..., degree+1).
+"""
+struct Monomials{D, T} <: Evaluable{T}
+    arg :: Evaluable
+    storage :: T
+
+    function Monomials(arg::Evaluable, degree::Int)
+        newsize = (size(arg)..., degree + 1)
+        rtype = marray(newsize, eltype(arg))
+        new{degree, rtype}(arg, rtype(undef))
+    end
+end
+
+arguments(self::Monomials) = [self.arg]
+
+@generated function (self::Monomials{D})(_, _, arg) where {D}
+    colons = [Colon() for _ in 1:ndims(self)-1]
+    codes = [
+        :(self.storage[$(colons...), $(i+1)] .= self.storage[$(colons...), $i] .* arg)
+        for i in 1:D
+    ]
+
+    quote
+        @_inline_meta
+        self.storage[$(colons...), 1] .= $(one(eltype(self)))
+        $(codes...)
+        self.storage
+    end
+end
