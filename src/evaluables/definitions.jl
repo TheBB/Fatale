@@ -8,11 +8,11 @@ const CoordsType{N, T} = NamedTuple{(:point, :grad), Tuple{StaticVector{N, T}, S
 Evaluable returning the local (parameter) N-dimensional coordinates of
 the evaluation point, with element type T.
 """
-struct LocalCoords{T} <: Evaluable{T}
-    LocalCoords(N, T=Float64) = new{CoordsType{N, T}}()
+struct LocalCoords{N, T} <: Evaluable{CoordsType{N, T}}
+    LocalCoords(N, T=Float64) = new{N,T}()
 end
 
-@inline function (::LocalCoords{CoordsType{N,T}})(element, quadpt) where {N,T}
+@inline function (::LocalCoords{N,T})(element, quadpt) where {N,T}
     igrad = SMatrix{N,N,T}(I)
     (point, grad) = loctrans(element)(quadpt, igrad)
     (point=point, grad=grad)
@@ -25,13 +25,13 @@ end
 Evaluable returning the global (physical) N-dimensional coordinates of
 the evaluation point, with element type T.
 """
-struct GlobalCoords{T} <: Evaluable{T}
-    GlobalCoords(N, T=Float64) = new{CoordsType{N, T}}()
+struct GlobalCoords{N, T} <: Evaluable{CoordsType{N, T}}
+    GlobalCoords(N, T=Float64) = new{N, T}()
 end
 
-arguments(::GlobalCoords{CoordsType{N,T}}) where {N,T} = [LocalCoords(N,T)]
+arguments(::GlobalCoords{N,T}) where {N,T} = [LocalCoords(N,T)]
 
-@inline function (::GlobalCoords{CoordsType{N,T}})(element, _, loc) where {N,T}
+@inline function (::GlobalCoords{N,T})(element, _, loc) where {N,T}
     (point, grad) = globtrans(element)(loc.point, loc.grad)
     (point=point, grad=grad)
 end
