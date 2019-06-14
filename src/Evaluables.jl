@@ -11,7 +11,7 @@ using ..Elements
 export evalorder
 export optimize
 export localpoint, localgrad, globalpoint, globalgrad
-export Monomials
+export Constant, Monomials
 
 
 """

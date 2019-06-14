@@ -57,6 +57,27 @@ end
 
 
 """
+    Constant(v)
+
+An evaluable returning the constant object *v*.
+"""
+struct Constant{T} <: Evaluable{T}
+    value :: T
+end
+
+@inline (self::Constant)(_, _) = self.value
+
+Base.eltype(self::Constant) = eltype(self.value)
+Base.ndims(self::Constant) = ndims(self.value)
+Base.size(self::Constant) = size(self.value)
+
+# Constants with different underlying objects must be considered
+# distinct. This overrides the behaviour of Evaluable.
+Base.hash(self::Constant, x::UInt64) = hash(self.value, x)
+Base.:(==)(l::Constant, r::Constant) = l.value == r.value
+
+
+"""
     Monomials(arg, degree)
 
 Computes all monomials of *arg* up to *degree*, yielding an array of

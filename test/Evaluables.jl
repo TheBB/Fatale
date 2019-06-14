@@ -51,6 +51,20 @@ end
 end
 
 
+@testset "Constant" begin
+    Random.seed!(201906141547)
+    data = @SArray rand(3,4,5)
+    func = optimize(Constant(data))
+    @test func(nothing, nothing) == data
+
+    @noallocs begin
+        data = @SArray rand(3,4,5)
+        func = optimize(Constant(data))
+        @bench $func(nothing, nothing)
+    end
+end
+
+
 @testset "Monomials" begin
     Random.seed!(201906141455)
     func = optimize(Monomials(localpoint(3), 4))
