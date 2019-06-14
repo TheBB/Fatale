@@ -7,6 +7,14 @@ end
 
 
 # ==============================================================================
+# Type constructors
+
+staticarray(size, eltype, root) = root{Tuple{size...}, eltype, length(size), prod(size)}
+marray(size, eltype) = staticarray(size, eltype, MArray)
+sarray(size, eltype) = staticarray(size, eltype, SArray)
+
+
+# ==============================================================================
 # Convenience constructors
 
 localpoint(n) = LocalCoords(n).point
