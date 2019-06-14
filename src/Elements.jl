@@ -86,8 +86,9 @@ struct Element{D, I, Trf<:Transform} <: AbstractElement{D}
     transform :: Trf
 end
 
-# Convenience constructor with a no-op index
-Element(trf) = Element(nothing, trf)
+# Convenience constructors
+Element(trf::Transform) = Element(nothing, trf)
+Element(D::Int) = Element(Empty(D))
 
 @generated function Element(index, trf::Transform)
     @assert fromdims(trf) == todims(trf)
