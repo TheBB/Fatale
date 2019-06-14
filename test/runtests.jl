@@ -6,6 +6,7 @@ using StaticArrays
 
 using Fatale.Transforms
 using Fatale.Elements
+using Fatale.Evaluables
 
 
 "Check that the result of `expr`, which should be a benchmark, has no
@@ -30,4 +31,8 @@ end
 
 @testset "Elements" begin
     include("Elements.jl")
+end
+
+@testset "Evaluables" begin
+    include("Evaluables.jl")
 end
