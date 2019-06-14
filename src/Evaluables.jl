@@ -36,13 +36,12 @@ Base.:(==)(l::Evaluable, r::Evaluable) = typeof(l) == typeof(r) && arguments(l) 
 codegen(::Type{<:Evaluable}, self, args...) = :($self($(args...)))
 
 
-# Most of our evaluables produce arrays, but we postpone the decision
-# on exactly which type of array until the compilation stage. Before
-# that, we use the abstract `StaticArray` type.
-const ArrayEvaluable{S <: Tuple, T, N} = Evaluable{StaticArray{S, T, N}}
-const ScalarEvaluable{T} = ArrayEvaluable{Tuple{}, T, 0}
-const VectorEvaluable{N, T} = ArrayEvaluable{Tuple{N}, T, 1}
-const MatrixEvaluable{M, N, T} = ArrayEvaluable{Tuple{N, M}, T, 2}
+Base.eltype(::Type{<:Evaluable{T}}) where T <: StaticArray = eltype(T)
+Base.eltype(::Evaluable{T}) where T <: StaticArray = eltype(T)
+Base.size(::Type{<:Evaluable{T}}) where T <: StaticArray = size(T)
+Base.size(::Evaluable{T}) where T <: StaticArray = size(T)
+Base.ndims(::Type{<:Evaluable{T}}) where T <: StaticArray = ndims(T)
+Base.ndims(::Evaluable{T}) where T <: StaticArray = ndims(T)
 
 
 include("evaluables/definitions.jl")
