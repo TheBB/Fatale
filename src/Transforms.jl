@@ -6,7 +6,7 @@ using StaticArrays
 
 using ..Utils
 
-export Transform
+export Transform, todims, fromdims
 export Chain, Empty, Shift, Updim
 
 

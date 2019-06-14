@@ -9,6 +9,7 @@ using ..Transforms
 using ..Utils
 
 export ReferenceElement, Simplex, Tensor
+export Element, SubElement
 export quadrule
 export loctrans, globtrans
 
@@ -80,7 +81,7 @@ Base.ndims(::AbstractElement{D}) where D = D
 
 A full D-dimensional element with index type I and transform type T.
 """
-struct Element{D, I, Trf<:Transform}
+struct Element{D, I, Trf<:Transform} <: AbstractElement{D}
     index :: I
     transform :: Trf
 end
@@ -103,7 +104,7 @@ end
 A D-dimensional element that is part of a higher-dimensional element
 of type P.
 """
-struct SubElement{D, I, Trf<:Transform, Parent<:AbstractElement}
+struct SubElement{D, I, Trf<:Transform, Parent<:AbstractElement} <: AbstractElement{D}
     index :: I
     transform :: Trf
     parent :: Parent
