@@ -57,6 +57,68 @@ end
 
 
 """
+    Contract((args...), (inds...), target_inds)
+
+Compute a fully unrolled tensor contraction.
+"""
+struct Contract{Inds, Tinds, T} <: Evaluable{T}
+    args :: Vector{Evaluable}
+    storage :: T
+
+    function Contract(args, inds, tinds)
+        @assert length(args) == length(inds)
+        @assert all(ndims(arg) == length(ind) for (arg, ind) in zip(args, inds))
+
+        dims = _sizedict(args, inds)
+        for (arg, ind) in zip(args, inds)
+            @assert all(size(arg, i) == dims[ind[i]] for i in 1:ndims(arg))
+        end
+
+        target_size = Tuple(dims[i] for i in tinds)
+        rtype = marray(target_size, reduce(promote_type, map(eltype, args)))
+
+        Inds = Tuple{(Tuple{ind...} for ind in inds)...}
+        Tinds = Tuple{tinds...}
+
+        new{Inds, Tinds, rtype}(collect(args), rtype(undef))
+    end
+end
+
+arguments(self::Contract) = self.args
+
+@generated function (self::Contract{Inds, Tinds})(_, _, args...) where {Inds, Tinds}
+    inds = collect(collect(tp.parameters) for tp in Inds.parameters)
+    tinds = collect(Tinds.parameters)
+    dims = _sizedict(args, inds)
+    dim_order = Dict(axis => num for (num, axis) in enumerate(keys(dims)))
+
+    codes = Expr[]
+    for indices in product((1:n for n in values(dims))...)
+        inputs = [
+            :(args[$i][$((indices[dim_order[ax]] for ax in ind)...)])
+            for (i, ind) in enumerate(inds)
+        ]
+        product = :(*($(inputs...)))
+        target = :(self.storage[$((indices[dim_order[ax]] for ax in tinds)...)])
+        push!(codes, :($target += $product))
+    end
+
+    quote
+        @_inline_meta
+        self.storage .= $(zero(eltype(self)))
+        $(codes...)
+        self.storage
+    end
+end
+
+_sizedict(args, inds) = OrderedDict(flatten(
+    (k => v for (k, v) in zip(ind, size(arg)))
+    for (arg, ind) in zip(args, inds)
+))
+
+
+
+"""
     Constant(v)
 
 An evaluable returning the constant object *v*.

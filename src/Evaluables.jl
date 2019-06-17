@@ -1,7 +1,7 @@
 module Evaluables
 
 import Base: @_inline_meta
-import Base.Iterators: isdone, Stateful
+import Base.Iterators: isdone, Stateful, flatten, product
 using DataStructures
 using StaticArrays
 using LinearAlgebra
@@ -11,7 +11,7 @@ using ..Elements
 export evalorder
 export optimize
 export localpoint, localgrad, globalpoint, globalgrad
-export Constant, Monomials
+export Contract, Constant, Monomials
 
 
 """
@@ -41,6 +41,8 @@ Base.eltype(::Type{<:Evaluable{T}}) where T <: StaticArray = eltype(T)
 Base.eltype(::Evaluable{T}) where T <: StaticArray = eltype(T)
 Base.size(::Type{<:Evaluable{T}}) where T <: StaticArray = size(T)
 Base.size(::Evaluable{T}) where T <: StaticArray = size(T)
+Base.size(::Type{<:Evaluable{T}}, i) where T <: StaticArray = size(T, i)
+Base.size(::Evaluable{T}, i) where T <: StaticArray = size(T, i)
 Base.ndims(::Type{<:Evaluable{T}}) where T <: StaticArray = ndims(T)
 Base.ndims(::Evaluable{T}) where T <: StaticArray = ndims(T)
 

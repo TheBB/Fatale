@@ -51,6 +51,36 @@ end
 end
 
 
+@testset "Contract" begin
+    Random.seed!(201906171327)
+
+    mx1 = @SMatrix rand(2,3)
+    mx2 = @SMatrix rand(3,2)
+    func = optimize(Contract(
+        (Constant(mx1), Constant(mx2)),
+        ((1,2), (2,3)), (1,3)
+    ))
+    @test func(nothing, nothing) ≈ mx1 * mx2
+
+    mx3 = @SMatrix rand(2,8)
+    func = optimize(Contract(
+        (Constant(mx1), Constant(mx2), Constant(mx3)),
+        ((1,2), (2,3), (3,4)), (1,4)
+    ))
+    @test func(nothing, nothing) ≈ mx1 * mx2 * mx3
+
+    func = optimize(Contract(
+        (Constant(mx1), Constant(mx2), Constant(mx3')),
+        ((10,30), (30,90), (71,10)), (71,90)
+    ))
+    @test func(nothing, nothing) ≈ mx3' * mx1 * mx2
+
+    @noallocs begin
+        @bench $func(nothing, nothing)
+    end
+end
+
+
 @testset "Constant" begin
     Random.seed!(201906141547)
     data = @SArray rand(3,4,5)
