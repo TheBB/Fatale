@@ -13,7 +13,7 @@ export Chain, Empty, Shift, Updim
 """
     Transform{M, N, R}
 
-Represents a transformation from M-dimensional to R-dimensional space
+Represents a transformation from M-dimensional to N-dimensional space
 with elements of type R.
 """
 abstract type Transform{From, To, R<:Real} end
