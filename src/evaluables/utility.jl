@@ -17,7 +17,15 @@ sarray(size, eltype) = staticarray(size, eltype, SArray)
 # ==============================================================================
 # Convenience constructors
 
-localpoint(n) = LocalCoords(n).point
-localgrad(n) = LocalCoords(n).grad
-globalpoint(n) = GlobalCoords(n).point
-globalgrad(n) = GlobalCoords(n).grad
+local_transform() = ElementData{:loctrans, Transform}()
+global_transform() = ElementData{:globtrans, Transform}()
+
+input_coords() = Argument{:point,Coords}()
+
+local_coords(n) = ApplyTrans(local_transform(), input_coords(), n)
+local_point(n) = local_coords(n).point
+local_grad(n) = local_coords(n).grad
+
+global_coords(n) = ApplyTrans(global_transform(), local_coords(n), n)
+global_point(n) = global_coords(n).point
+global_grad(n) = global_coords(n).grad

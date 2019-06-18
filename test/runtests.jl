@@ -17,7 +17,7 @@ end
 
 Element(trf::Transform) = Element{todims(trf), typeof(trf)}(trf)
 Element(D::Int) = Element(Empty(D))
-@inline Elements.globtrans(self::Element) = self.transform
+@inline Elements.elementdata(self::Element, ::Val{:globtrans}) = self.transform
 
 struct SubElement{D, T, P} <: AbstractElement{D}
     transform :: T
@@ -25,8 +25,9 @@ struct SubElement{D, T, P} <: AbstractElement{D}
 end
 
 SubElement(trf, parent) = SubElement{fromdims(trf), typeof(trf), typeof(parent)}(trf, parent)
-@inline Elements.loctrans(self::SubElement) = Chain(self.transform, loctrans(self.parent))
-@inline Elements.globtrans(self::SubElement) = globtrans(self.parent)
+@inline Elements.elementdata(self::SubElement, ::Val{:loctrans}) =
+    Chain(self.transform, elementdata(self.parent, Val(:loctrans)))
+@inline Elements.elementdata(self::SubElement, ::Val{:globtrans}) = elementdata(self.parent, Val(:globtrans))
 
 
 "Check that the result of `expr`, which should be a benchmark, has no

@@ -40,14 +40,21 @@ end
 
 Evaluate the optimized evaluable in an evaluation point.
 """
-@generated function (self::OptimizedEvaluable{T,I,K})(element, quadpt) where {T,I,K}
+@generated function (self::OptimizedEvaluable{T,Ind,K})(element, quadpt) where {T,Ind,K}
     nfuncs = length(K.parameters)
     syms = [gensym() for _ in 1:nfuncs]
-    argsyms = [[syms[j] for j in tp.parameters] for tp in I.parameters]
+    argsyms = [[syms[j] for j in tp.parameters] for tp in Ind.parameters]
 
     codes = Expr[]
+    if quadpt == Nothing
+        push!(codes, :(input = (element=element, point=(point=nothing, grad=nothing))))
+    else
+        N = length(quadpt)
+        push!(codes, :(input = (element=element, point=(point=quadpt, grad=SMatrix{$N,$N,Float64}(I)))))
+    end
+
     for (i, (functype, sym, args)) in enumerate(zip(K.parameters, syms, argsyms))
-        code = codegen(functype, :(self.funcs[$i]), :element, :quadpt, args...)
+        code = codegen(functype, :(self.funcs[$i]), :input, args...)
         push!(codes, :($sym = $code))
     end
 

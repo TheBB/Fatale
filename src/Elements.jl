@@ -8,10 +8,8 @@ using StaticArrays
 using ..Transforms
 using ..Utils
 
-export ReferenceElement, Simplex, Tensor
-export quadrule
-export AbstractElement
-export loctrans, globtrans, reference, dofs
+export ReferenceElement, Simplex, Tensor, quadrule
+export AbstractElement, elementdata
 
 
 """
@@ -77,41 +75,18 @@ Base.ndims(::AbstractElement{D}) where D = D
 
 
 """
-    loctrans(::AbstractElement) :: Transform
+    elementdata(::AbstractElement, ::Val{type}, args...)
 
-The transformation necessary to bring quadrature points into the fully
-realized parameter space of the master element. This is usually a
-no-op for Elements, and a chain of Updims for SubElements
-(i.e. boundary elements).
+Common interface for obtaining element data of a given type. Some
+names are reserved:
+
+- :loctrans -> the local parameter transformation
+- :globtrans -> the global physical transformation
+
+Others can be freely used. See Fatale.Evaluables.ElementData.
 """
-loctrans(::AbstractElement{D}) where D = Empty{D,Float64}()
-
-
-"""
-    globtrans(::AbstractElement) :: Transform
-
-The transformation necessary to bring a fully realized parameter space
-point into 'physical' space. This usually only depends on the master
-element, and is equal for all subelements.
-"""
-globtrans(::AbstractElement) = nothing
-
-
-"""
-    reference(::AbstractElement{D}) :: ReferenceElement{D}
-
-Get the reference element associated with the given element.
-"""
-reference(::AbstractElement) = nothing
-
-
-"""
-    dofs(::AbstractElement) :: SVector
-
-Get the indices of the degrees of freedom associated with the given
-element.
-"""
-dofs(::AbstractElement) = SVector{0,Int}()
+elementdata(::AbstractElement, ::Val, args...) = nothing
+elementdata(::AbstractElement{D}, ::Val{:loctrans}) where D = Empty{D,Float64}()
 
 
 end # module

@@ -1,38 +1,52 @@
-# Return type of LocalCoords and GlobalCoords
-const CoordsType{N, T} = NamedTuple{(:point, :grad), Tuple{StaticVector{N, T}, StaticMatrix{N, N, T}}}
+const Coords{N, T} = NamedTuple{(:point, :grad), Tuple{StaticVector{N, T}, StaticMatrix{N, N, T}}}
 
 
-"""
-    LocalCoords(N, T=Float64)
+struct Argument{V,T} <: Evaluable{T} end
 
-Evaluable returning the local (parameter) N-dimensional coordinates of
-the evaluation point, with element type T.
-"""
-struct LocalCoords{N, T} <: Evaluable{CoordsType{N, T}}
-    LocalCoords(N, T=Float64) = new{N,T}()
-end
-
-@inline function (::LocalCoords{N,T})(element, quadpt) where {N,T}
-    igrad = SMatrix{N,N,T}(I)
-    (point, grad) = loctrans(element)(quadpt, igrad)
-    (point=point, grad=grad)
+@generated (::Argument{V})(input) where V = quote
+    @_inline_meta
+    input.$V
 end
 
 
 """
-    GlobalCoords(N, T=Float64)
+    ElementData{sym, T}(args...)
 
-Evaluable returning the global (physical) N-dimensional coordinates of
-the evaluation point, with element type T.
+An evaluable that accesses element data named `sym` of type T. Some
+standard names are defined:
+
+- :loctrans -> the local parameter transformation
+- :globtrans -> the global physical transformation
+
+You can use others so long as you know that the element type supports
+them, that is, there is a method of Fatale.Elements.ElementData
+
+    elementdata(::ElementType, ::Val{sym}, args...) :: T
 """
-struct GlobalCoords{N, T} <: Evaluable{CoordsType{N, T}}
-    GlobalCoords(N, T=Float64) = new{N, T}()
+struct ElementData{V, T, A<:Tuple} <: Evaluable{T}
+    args :: A
+    ElementData{V,T}(a...) where {V,T} = new{V,T,typeof(a)}(a)
 end
 
-arguments(::GlobalCoords{N,T}) where {N,T} = [LocalCoords(N,T)]
+@inline (self::ElementData{V})(input) where V = elementdata(input.element, Val(V), self.args...)
 
-@inline function (::GlobalCoords{N,T})(element, _, loc) where {N,T}
-    (point, grad) = globtrans(element)(loc.point, loc.grad)
+
+"""
+    ApplyTrans(trans, point, N, T=Float64)
+
+Apply `trans` to `point`, producing an N-dimensional coordinate of
+element type T.
+"""
+struct ApplyTrans{N, T} <: Evaluable{Coords{N, T}}
+    _trans :: Evaluable{Transform}
+    _point :: Evaluable{<:Coords}
+    ApplyTrans(trans, point, N, T=Float64) = new{N, T}(trans, point)
+end
+
+arguments(self::ApplyTrans) = [self._trans, self._point]
+
+@inline function (::ApplyTrans)(_, trans, point)
+    (point, grad) = trans(point.point, point.grad)
     (point=point, grad=grad)
 end
 
@@ -48,7 +62,7 @@ end
 
 arguments(self::GetProperty) = [self.arg]
 
-@generated function (::GetProperty{S})(_, _, arg) where S
+@generated function (::GetProperty{S})(_, arg) where S
     quote
         @_inline_meta
         arg.$S
@@ -86,7 +100,7 @@ end
 
 arguments(self::Contract) = self.args
 
-@generated function (self::Contract{Inds, Tinds})(_, _, args...) where {Inds, Tinds}
+@generated function (self::Contract{Inds, Tinds})(_, args...) where {Inds, Tinds}
     inds = collect(collect(tp.parameters) for tp in Inds.parameters)
     tinds = collect(Tinds.parameters)
     dims = _sizedict(args, inds)
@@ -127,7 +141,7 @@ struct Constant{T} <: Evaluable{T}
     value :: T
 end
 
-@inline (self::Constant)(_, _) = self.value
+@inline (self::Constant)(_) = self.value
 
 Base.eltype(self::Constant) = eltype(self.value)
 Base.ndims(self::Constant) = ndims(self.value)
@@ -158,7 +172,7 @@ end
 
 arguments(self::Monomials) = [self.arg]
 
-@generated function (self::Monomials{D})(_, _, arg) where {D}
+@generated function (self::Monomials{D})(_, arg) where {D}
     colons = [Colon() for _ in 1:ndims(self)-1]
     codes = [
         :(self.storage[$(colons...), $(i+1)] .= self.storage[$(colons...), $i] .* arg)

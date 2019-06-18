@@ -7,10 +7,11 @@ using StaticArrays
 using LinearAlgebra
 
 using ..Elements
+using ..Transforms
 
 export evalorder
 export optimize
-export localpoint, localgrad, globalpoint, globalgrad
+export local_point, local_grad, global_point, global_grad
 export Contract, Constant, Monomials
 
 
@@ -52,15 +53,20 @@ include("evaluables/utility.jl")
 include("evaluables/compilation.jl")
 
 
-Base.show(io::IO, self::Evaluable{T}) where T = print(io, string(typeof(self).name.name), _typerepr(T))
+Base.show(io::IO, self::Evaluable{T}) where T = print(io, string(typeof(self).name.name), typerepr(T))
 
+typerepr(T::DataType) = _typerepr(T)
+typerepr(T::UnionAll) = "[?]"
+
+_typerepr(::Type{AbstractElement}) = "Element"
+_typerepr(::Type{Transform}) = "Transform"
 _typerepr(::Type{T}) where T <: StaticArray = string("<", join(size(T), ","), ">")
-_typerepr(::Type{T}) where T <: Tuple = string("(", join((_typerepr(param) for param in T.parameters), ", "), ")")
+_typerepr(::Type{T}) where T <: Tuple = string("(", join((typerepr(param) for param in T.parameters), ", "), ")")
 
 function _typerepr(::Type{T}) where T <: NamedTuple
     names = T.parameters[1]
     values = T.parameters[2].parameters
-    entries = join((string(name, "=", _typerepr(value)) for (name, value) in zip(names, values)), ", ")
+    entries = join((string(name, "=", typerepr(value)) for (name, value) in zip(names, values)), ", ")
     string("{", entries, "}")
 end
 
