@@ -38,7 +38,7 @@ Apply `trans` to `point`, producing an N-dimensional coordinate of
 element type T.
 """
 struct ApplyTrans{N, T} <: Evaluable{Coords{N, T}}
-    _trans :: Evaluable{Transform}
+    _trans :: Evaluable{AbstractTransform}
     _point :: Evaluable{<:Coords}
     ApplyTrans(trans, point, N, T=Float64) = new{N, T}(trans, point)
 end

@@ -15,7 +15,7 @@ struct Element{D, T} <: AbstractElement{D}
     transform :: T
 end
 
-Element(trf::Transform) = Element{todims(trf), typeof(trf)}(trf)
+Element(trf::AbstractTransform) = Element{todims(trf), typeof(trf)}(trf)
 Element(D::Int) = Element(Empty(D))
 @inline Elements.elementdata(self::Element, ::Val{:globtrans}) = self.transform
 

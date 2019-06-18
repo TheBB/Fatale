@@ -17,8 +17,8 @@ sarray(size, eltype) = staticarray(size, eltype, SArray)
 # ==============================================================================
 # Convenience constructors
 
-local_transform() = ElementData{:loctrans, Transform}()
-global_transform() = ElementData{:globtrans, Transform}()
+local_transform() = ElementData{:loctrans, AbstractTransform}()
+global_transform() = ElementData{:globtrans, AbstractTransform}()
 
 input_coords() = Argument{:point,Coords}()
 

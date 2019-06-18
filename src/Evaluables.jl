@@ -59,7 +59,7 @@ typerepr(T::DataType) = _typerepr(T)
 typerepr(T::UnionAll) = "[?]"
 
 _typerepr(::Type{AbstractElement}) = "Element"
-_typerepr(::Type{Transform}) = "Transform"
+_typerepr(::Type{AbstractTransform}) = "Transform"
 _typerepr(::Type{T}) where T <: StaticArray = string("<", join(size(T), ","), ">")
 _typerepr(::Type{T}) where T <: Tuple = string("(", join((typerepr(param) for param in T.parameters), ", "), ")")
 

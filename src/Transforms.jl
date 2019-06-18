@@ -6,25 +6,25 @@ using StaticArrays
 
 using ..Utils
 
-export Transform, todims, fromdims
+export AbstractTransform, todims, fromdims
 export Chain, Empty, Shift, Updim
 
 
 """
-    Transform{M, N, R}
+    AbstractTransform{M, N, R}
 
 Represents a transformation from M-dimensional to N-dimensional space
 with elements of type R.
 """
-abstract type Transform{From, To, R<:Real} end
+abstract type AbstractTransform{From, To, R<:Real} end
 
-@inline fromdims(::Type{<:Transform{F}}) where F = F
-@inline todims(::Type{<:Transform{_F, T}}) where {_F, T} = T
-@inline eltype(::Type{<:Transform{_F, _T, R}}) where {_F, _T, R} = R
+@inline fromdims(::Type{<:AbstractTransform{F}}) where F = F
+@inline todims(::Type{<:AbstractTransform{_F, T}}) where {_F, T} = T
+@inline eltype(::Type{<:AbstractTransform{_F, _T, R}}) where {_F, _T, R} = R
 
-@inline fromdims(t::T) where T<:Transform = fromdims(T)
-@inline todims(t::T) where T<:Transform = todims(T)
-@inline eltype(t::T) where T<:Transform = eltype(T)
+@inline fromdims(t::T) where T<:AbstractTransform = fromdims(T)
+@inline todims(t::T) where T<:AbstractTransform = todims(T)
+@inline eltype(t::T) where T<:AbstractTransform = eltype(T)
 
 
 """
@@ -33,7 +33,7 @@ abstract type Transform{From, To, R<:Real} end
 Construct a single chain transformation from a sequence of
 transformations to apply in order.
 """
-struct Chain{K<:Tuple{Vararg{Transform}}, From, To, R} <: Transform{From, To, R}
+struct Chain{K<:Tuple{Vararg{AbstractTransform}}, From, To, R} <: AbstractTransform{From, To, R}
     chain :: K
 end
 
@@ -73,7 +73,7 @@ end
 
 A D-dimensional transform that does nothing.
 """
-struct Empty{D, R} <: Transform{D, D, R} end
+struct Empty{D, R} <: AbstractTransform{D, D, R} end
 
 # Convenient but type-unstable constructors
 Empty(D, R) = Empty{D, R}()
@@ -88,7 +88,7 @@ Empty(D) = Empty(D, Float64)
 
 Create a shifting transformation that adds *x* to each input vector.
 """
-struct Shift{D, R} <: Transform{D, D, R}
+struct Shift{D, R} <: AbstractTransform{D, D, R}
     offset :: SVector{D, R}
     Shift(offset::SVector{D,R}) where {D,R} = new{D,R}(offset)
 end
@@ -104,7 +104,7 @@ Create a transformation increasing the dimension of a space by one, by
 inserting the element `value` at index `I`. The final space has
 dimension `N`.
 """
-struct Updim{Ins, From, To, R} <: Transform{From, To, R}
+struct Updim{Ins, From, To, R} <: AbstractTransform{From, To, R}
     value :: R
 
     @inline function Updim{Ins, To}(value) where {Ins, To}
