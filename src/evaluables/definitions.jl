@@ -62,11 +62,9 @@ end
 
 arguments(self::GetProperty) = [self.arg]
 
-@generated function (::GetProperty{S})(_, arg) where S
-    quote
-        @_inline_meta
-        arg.$S
-    end
+@generated (::GetProperty{S})(_, arg) where S = quote
+    @_inline_meta
+    arg.$S
 end
 
 
