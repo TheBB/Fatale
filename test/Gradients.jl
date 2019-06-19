@@ -5,6 +5,9 @@
 
     func = optimize(grad(geom, geom))
     @test func(element, @SVector rand(2)) ≈ [1 0; 0 1]
+
+    func = optimize(grad(grad(geom, geom), geom))
+    @test func(element, @SVector rand(2)) ≈ zeros(2,2,2)
 end
 
 
@@ -15,4 +18,7 @@ end
 
     func = optimize(grad(global_point(2), geom))
     @test func(element, @SVector rand(2)) ≈ [1 0; 0 1]
+
+    func = optimize(grad(grad(global_point(2), geom), geom))
+    @test func(element, @SVector rand(2)) ≈ zeros(2,2,2)
 end
