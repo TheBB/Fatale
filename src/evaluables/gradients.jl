@@ -35,6 +35,6 @@ function grad(self::Contract{Inds, Tinds}, d::Int) where {Inds, Tinds}
 end
 
 grad(self::Inv, d::Int) = -Contract(
-    (self, grad(self, d), self),
+    (self, grad(self.arg, d), self),
     ((1,2), (2,3,5), (3,4)), (1,4,5)
 )
