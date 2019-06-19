@@ -132,3 +132,14 @@ end
         @bench $func($element, $quadpt)
     end
 end
+
+
+@testset "Zeros" begin
+    Random.seed!(201906191751)
+    func = optimize(Zeros(Float64, 3, 5, 7))
+    @test func(nothing, nothing) == zeros(Float64, 3, 5, 7)
+
+    @noallocs begin
+        @bench $func(nothing, nothing)
+    end
+end

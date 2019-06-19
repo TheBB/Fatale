@@ -244,3 +244,19 @@ arguments(self::Monomials) = [self.arg]
         self.storage
     end
 end
+
+
+"""
+    Zeros(T=Float64, size...)
+
+Return a constant zero array of the given size and type.
+"""
+struct Zeros{T} <: Evaluable{T}
+    Zeros(k::Type, size::Int...) = new{sarray(size, k)}()
+end
+
+Zeros(size::Int...) = Zeros(Float64, size...)
+
+@generated (::Zeros{T})(_) where T = quote
+    @SArray zeros($(eltype(T)), $(size(T)...))
+end
