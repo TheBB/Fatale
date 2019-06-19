@@ -52,7 +52,7 @@ end
 
 
 """
-    GetProperty{T, S}(arg)
+    GetProperty{S, T}(arg)
 
 Evaluable accessing a field of *arg* named S, with type T.
 """

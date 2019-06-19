@@ -56,3 +56,7 @@ end
 @testset "Evaluables" begin
     include("Evaluables.jl")
 end
+
+@testset "Gradients" begin
+    include("Gradients.jl")
+end

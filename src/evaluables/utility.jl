@@ -15,7 +15,7 @@ sarray(size, eltype) = staticarray(size, eltype, SArray)
 
 
 # ==============================================================================
-# Operators and other convenience constructors
+# Methods to other functions
 
 function Base.:*(left::Evaluable, right::Evaluable)
     linds = Tuple(1:ndims(left))
@@ -23,6 +23,12 @@ function Base.:*(left::Evaluable, right::Evaluable)
     tinds = Tuple(flatten((linds[1:end-1], rinds[2:end])))
     Contract((left, right), (linds, rinds), tinds)
 end
+
+Base.inv(self::Evaluable) = Inv(self)
+
+
+# ==============================================================================
+# Convenience constructors
 
 local_transform() = ElementData{:loctrans, AbstractTransform}()
 global_transform() = ElementData{:globtrans, AbstractTransform}()

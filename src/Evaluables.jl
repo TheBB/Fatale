@@ -50,6 +50,7 @@ Base.ndims(::Evaluable{T}) where T <: StaticArray = ndims(T)
 
 include("evaluables/definitions.jl")
 include("evaluables/utility.jl")
+include("evaluables/gradients.jl")
 include("evaluables/compilation.jl")
 
 
