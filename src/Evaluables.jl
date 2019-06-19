@@ -55,7 +55,7 @@ include("evaluables/compilation.jl")
 
 Base.show(io::IO, self::Evaluable{T}) where T = print(io, string(typeof(self).name.name), typerepr(T))
 
-typerepr(T::DataType) = _typerepr(T)
+typerepr(T) = _typerepr(T)
 typerepr(T::UnionAll) = "[?]"
 
 _typerepr(::Type{AbstractElement}) = "Element"
