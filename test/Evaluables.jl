@@ -62,6 +62,9 @@ end
     ))
     @test func(nothing, nothing) ≈ mx1 * mx2
 
+    func = optimize(Constant(mx1) * Constant(mx2))
+    @test func(nothing, nothing) ≈ mx1 * mx2
+
     mx3 = @SMatrix rand(2,8)
     func = optimize(Contract(
         (Constant(mx1), Constant(mx2), Constant(mx3)),
