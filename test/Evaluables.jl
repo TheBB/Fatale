@@ -95,6 +95,29 @@ end
 end
 
 
+@testset "Inv" begin
+    Random.seed!(201906191343)
+
+    data = @SArray rand(1,1)
+    func = optimize(Inv(Constant(data)))
+    @test func(nothing, nothing) ≈ inv(data)
+
+    data = @SArray rand(2,2)
+    func = optimize(Inv(Constant(data)))
+    @test func(nothing, nothing) ≈ inv(data)
+
+    data = @SArray rand(3,3)
+    func = optimize(Inv(Constant(data)))
+    @test func(nothing, nothing) ≈ inv(data)
+
+    @noallocs begin
+        data = @SArray rand(3,3)
+        func = optimize(Inv(Constant(data)))
+        @bench $func(nothing, nothing)
+    end
+end
+
+
 @testset "Monomials" begin
     Random.seed!(201906141455)
     func = optimize(Monomials(local_point(3), 4))

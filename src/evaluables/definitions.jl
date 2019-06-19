@@ -152,6 +152,66 @@ Base.:(==)(l::Constant, r::Constant) = l.value == r.value
 
 
 """
+    Inv(arg)
+
+An evaluable that computes the inverse of the two-dimensional argument
+*arg*.
+"""
+struct Inv{T} <: Evaluable{T}
+    arg :: Evaluable
+    storage :: T
+
+    function Inv(arg::Evaluable)
+        @assert ndims(arg) == 2
+        @assert size(arg, 1) == size(arg, 2)
+        @assert size(arg, 1) < 4
+        rtype = marray(size(arg), eltype(arg))
+        new{rtype}(arg, rtype(undef))
+    end
+end
+
+arguments(self::Inv) = [self.arg]
+
+@generated function (self::Inv)(_, arg)
+    dims = size(self, 1)
+    T = eltype(self)
+    if dims == 1
+        quote
+            self.storage[1,1] = $(one(T)) / arg[1,1]
+            self.storage
+        end
+    elseif dims == 2
+        quote
+            self.storage[1,1] = arg[2,2]
+            self.storage[2,2] = arg[1,1]
+            self.storage[1,2] = -arg[1,2]
+            self.storage[2,1] = -arg[2,1]
+            self.storage ./= (arg[1,1] * arg[2,2] - arg[1,2] * arg[2,1])
+            self.storage
+        end
+    elseif dims == 3
+        quote
+            self.storage[1,1] = arg[2,2] * arg[3,3] - arg[2,3] * arg[3,2]
+            self.storage[2,1] = arg[2,3] * arg[3,1] - arg[2,1] * arg[3,3]
+            self.storage[3,1] = arg[2,1] * arg[3,2] - arg[2,2] * arg[3,1]
+            self.storage[1,2] = arg[1,3] * arg[3,2] - arg[1,2] * arg[3,3]
+            self.storage[2,2] = arg[1,1] * arg[3,3] - arg[1,3] * arg[3,1]
+            self.storage[3,2] = arg[1,2] * arg[3,1] - arg[1,1] * arg[3,2]
+            self.storage[1,3] = arg[1,2] * arg[2,3] - arg[1,3] * arg[2,2]
+            self.storage[2,3] = arg[1,3] * arg[2,1] - arg[1,1] * arg[2,3]
+            self.storage[3,3] = arg[1,1] * arg[2,2] - arg[1,2] * arg[2,1]
+            self.storage ./= (
+                arg[1,1] * self.storage[1,1] +
+                arg[1,2] * self.storage[2,1] +
+                arg[1,3] * self.storage[3,1]
+            )
+            self.storage
+        end
+    end
+end
+
+
+"""
     Monomials(arg, degree)
 
 Computes all monomials of *arg* up to *degree*, yielding an array of
