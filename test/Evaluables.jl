@@ -137,6 +137,18 @@ end
 end
 
 
+@testset "Negate" begin
+    Random.seed!(201906192304)
+    data = @SArray rand(5,2)
+    func = optimize(-Constant(data))
+    @test func(nothing, nothing) == -data
+
+    @noallocs begin
+        @bench $func(nothing, nothing)
+    end
+end
+
+
 @testset "Product" begin
     Random.seed!(201906191850)
 

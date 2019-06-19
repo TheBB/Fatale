@@ -24,6 +24,8 @@ function Base.:*(left::Evaluable, right::Evaluable)
     Contract((left, right), (linds, rinds), tinds)
 end
 
+Base.:-(self::Evaluable) = Negate(self)
+
 Base.inv(self::Evaluable) = Inv(self)
 
 

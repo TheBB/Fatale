@@ -246,6 +246,21 @@ end
 
 
 """
+    Negate(arg)
+
+Negate the argument.
+"""
+struct Negate{T} <: Evaluable{T}
+    arg :: Evaluable
+    Negate(arg) = new{restype(arg)}(arg)
+end
+
+arguments(self::Negate) = [self.arg]
+
+@inline (::Negate)(_, arg) = -arg
+
+
+"""
     Product(args...)
 
 Elementwise product of arguments.
