@@ -247,6 +247,64 @@ end
 
 
 """
+    Product(args...)
+
+Elementwise product of arguments.
+"""
+struct Product{T} <: Evaluable{T}
+    args :: Vector{Evaluable}
+    storage :: T
+
+    function Product(args...)
+        rsize = broadcast_shape(map(size, args)...)
+        rtype = marray(rsize, reduce(promote_type, map(eltype, args)))
+        new{rtype}(collect(args), rtype(undef))
+    end
+end
+
+arguments(self::Product) = self.args
+
+# Generated to avoid allocating when splatting in .*(args...)
+@generated function (self::Product)(_, args...)
+    argcodes = [:(args[$i]) for i in 1:length(args)]
+    quote
+        self.storage .= $(zero(eltype(self)))
+        self.storage .= .*($(argcodes...))
+        self.storage
+    end
+end
+
+
+"""
+    Sum(args...)
+
+Elementwise sum of arguments.
+"""
+struct Sum{T} <: Evaluable{T}
+    args :: Vector{Evaluable}
+    storage :: T
+
+    function Sum(args...)
+        rsize = broadcast_shape(map(size, args)...)
+        rtype = marray(rsize, reduce(promote_type, map(eltype, args)))
+        new{rtype}(collect(args), rtype(undef))
+    end
+end
+
+arguments(self::Sum) = self.args
+
+# Generated to avoid allocating when splatting in .+(args...)
+@generated function (self::Sum)(_, args...)
+    argcodes = [:(args[$i]) for i in 1:length(args)]
+    quote
+        self.storage .= $(zero(eltype(self)))
+        self.storage .= .+($(argcodes...))
+        self.storage
+    end
+end
+
+
+"""
     Zeros(T=Float64, size...)
 
 Return a constant zero array of the given size and type.

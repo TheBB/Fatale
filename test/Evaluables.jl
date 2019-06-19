@@ -137,6 +137,44 @@ end
 end
 
 
+@testset "Product" begin
+    Random.seed!(201906191850)
+
+    arr1 = @SArray rand(1,2,3)
+    arr2 = @SArray rand(2,2)
+    arr3 = @SArray rand(2,1,3)
+
+    func = Product(Constant(arr1), Constant(arr2), Constant(arr3))
+    @test size(func) == (2, 2, 3)
+    func = optimize(func)
+
+    @test func(nothing, nothing) ≈ .*(arr1, arr2, arr3)
+
+    @noallocs begin
+        @bench $func(nothing, nothing)
+    end
+end
+
+
+@testset "Sum" begin
+    Random.seed!(201906191836)
+
+    arr1 = @SArray rand(1,2,3)
+    arr2 = @SArray rand(2,2)
+    arr3 = @SArray rand(2,1,3)
+
+    func = Sum(Constant(arr1), Constant(arr2), Constant(arr3))
+    @test size(func) == (2, 2, 3)
+    func = optimize(func)
+
+    @test func(nothing, nothing) ≈ .+(arr1, arr2, arr3)
+
+    @noallocs begin
+        @bench $func(nothing, nothing)
+    end
+end
+
+
 @testset "Zeros" begin
     Random.seed!(201906191751)
     func = optimize(Zeros(Float64, 3, 5, 7))

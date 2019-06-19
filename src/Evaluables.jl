@@ -1,6 +1,7 @@
 module Evaluables
 
 import Base: @_inline_meta
+import Base.Broadcast: broadcast_shape
 import Base.Iterators: isdone, Stateful, flatten, product
 using DataStructures
 using StaticArrays
@@ -12,7 +13,7 @@ using ..Transforms
 export evalorder
 export optimize
 export local_point, local_grad, global_point, global_grad, grad
-export Contract, Constant, Inv, Monomials, Zeros
+export Contract, Constant, Inv, Monomials, Product, Sum, Zeros
 
 
 """
