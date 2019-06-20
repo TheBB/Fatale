@@ -28,6 +28,8 @@ Base.:-(self::Evaluable) = Negate(self)
 
 Base.inv(self::Evaluable) = Inv(self)
 
+Base.reshape(self::Evaluable, args...) = Reshape(self, args...)
+
 
 # ==============================================================================
 # Convenience constructors

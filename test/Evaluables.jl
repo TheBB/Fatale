@@ -172,6 +172,26 @@ end
 end
 
 
+@testset "Reshape" begin
+    Random.seed!(201906201022)
+    arr = @SArray rand(5, 3, 7)
+
+    func = optimize(reshape(Constant(arr), 3, 7, 5))
+    @test func(nothing, nothing) == reshape(arr, 3, 7, 5)
+
+    func = optimize(reshape(Constant(arr), 15, 7))
+    @test func(nothing, nothing) == reshape(arr, 15, 7)
+
+    func = optimize(reshape(Constant(arr), 3, :))
+    @test func(nothing, nothing) == reshape(arr, 3, 35)
+
+    @noallocs begin
+        func = optimize(reshape(Constant(arr), 3, 7, 5))
+        @bench $func(nothing, nothing)
+    end
+end
+
+
 @testset "Sum" begin
     Random.seed!(201906191836)
 

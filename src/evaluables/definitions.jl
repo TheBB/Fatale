@@ -295,6 +295,33 @@ end
 
 
 """
+    Reshape(arg, size...)
+
+Reshape *arg* to a new size.
+"""
+struct Reshape{T} <: Evaluable{T}
+    arg :: Evaluable
+    
+    function Reshape(arg, newsize...)
+        newsize = collect(newsize)
+        if (colon_index = findfirst(==(:), newsize)) != nothing
+            in_length = prod(size(arg))
+            out_length = prod(k for k in newsize if k != (:))
+            @assert in_length % out_length == 0
+            newsize[colon_index] = div(in_length, out_length)
+        end
+        @assert all(k != (:) for k in newsize)
+        rtype = sarray(newsize, eltype(arg))
+        new{rtype}(arg)
+    end
+end
+
+arguments(self::Reshape) = [self.arg]
+
+@generated (self::Reshape)(_, arg) = :(reshape(arg, $(size(self)...)))
+
+
+"""
     Sum(args...)
 
 Elementwise sum of arguments.
