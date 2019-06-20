@@ -1,8 +1,13 @@
 # ==============================================================================
 # Miscellaneous
 
-insertaxis(arg::Evaluable; left=0, right=0) = reshape(arg, ones(Int, left)..., size(arg)..., ones(Int, right)...)
+function insertaxis(arg::Evaluable; left=0, right=0)
+    left == 0 && right == 0 && return arg
+    reshape(arg, ones(Int, left)..., size(arg)..., ones(Int, right)...)
+end
 
+flushleft(arg::Evaluable, totdims::Int) = insertaxis(arg; right=totdims-ndims(arg))
+flushleft(arg::Evaluable, reference) = flushleft(arg, ndims(reference))
 flushright(arg::Evaluable, totdims::Int) = insertaxis(arg; left=totdims-ndims(arg))
 flushright(arg::Evaluable, reference) = flushright(arg, ndims(reference))
 

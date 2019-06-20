@@ -30,7 +30,6 @@ function grad(self::Contract{Inds, Tinds}, d::Int) where {Inds, Tinds}
             (tinds..., next)
         ))
     end
-
     Sum(terms...)
 end
 
@@ -38,9 +37,18 @@ function grad(self::Monomials{D, P}, d::Int) where {D, P}
     newmono = Monomials(self.arg, D-1, P+1)
     scale = flushright(Constant(SVector(zeros(Int, P+1)..., 1:D...)), newmono)
     chain = grad(insertaxis(self.arg; right=1), d)
-    @show typeof(newmono)
-    @show typeof(scale)
     insertaxis(newmono .* scale; right=1) .* chain
+end
+
+function grad(self::Product, d::Int)
+    maxdims = maximum(ndims(factor) for factor in self.args)
+    reshaped = [insertaxis(flushleft(factor, maxdims); right=1) for factor in self.args]
+    terms = Evaluable[]
+    for (i, factor) in enumerate(self.args)
+        term = Product(reshaped[1:i-1]..., grad(flushleft(factor, maxdims), d), reshaped[i+1:end]...)
+        push!(terms, term)
+    end
+    Sum(terms...)
 end
 
 grad(self::Reshape, d::Int) = reshape(grad(self.arg, d), size(self)..., d)
