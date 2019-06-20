@@ -1,7 +1,9 @@
 # ==============================================================================
 # Miscellaneous
 
-flushright(arg::Evaluable, ndims::Int) = reshape(arg, ones(Int, length(size) - ndims)..., size(arg)...)
+insertaxis(arg::Evaluable; left=0, right=0) = reshape(arg, ones(Int, left)..., size(arg)..., ones(Int, right)...)
+
+flushright(arg::Evaluable, totdims::Int) = insertaxis(arg; left=totdims-ndims(arg))
 flushright(arg::Evaluable, reference) = flushright(arg, ndims(reference))
 
 
@@ -24,6 +26,8 @@ function Base.:*(left::Evaluable, right::Evaluable)
 end
 
 Base.:-(self::Evaluable) = Negate(self)
+
+Base.broadcasted(::typeof(*), left::Evaluable, right::Evaluable) = Product(left, right)
 
 function Base.getproperty(self::Evaluable{T}, v::Symbol) where T<:NamedTuple
     index = findfirst(==(v), T.parameters[1])

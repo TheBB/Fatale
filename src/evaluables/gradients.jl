@@ -34,6 +34,17 @@ function grad(self::Contract{Inds, Tinds}, d::Int) where {Inds, Tinds}
     Sum(terms...)
 end
 
+function grad(self::Monomials{D, P}, d::Int) where {D, P}
+    newmono = Monomials(self.arg, D-1, P+1)
+    scale = flushright(Constant(SVector(zeros(Int, P+1)..., 1:D...)), newmono)
+    chain = grad(insertaxis(self.arg; right=1), d)
+    @show typeof(newmono)
+    @show typeof(scale)
+    insertaxis(newmono .* scale; right=1) .* chain
+end
+
+grad(self::Reshape, d::Int) = reshape(grad(self.arg, d), size(self)..., d)
+
 grad(self::Inv, d::Int) = -Contract(
     (self, grad(self.arg, d), self),
     ((1,2), (2,3,5), (3,4)), (1,4,5)
