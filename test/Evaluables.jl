@@ -123,10 +123,14 @@ end
 
 @testset "Monomials" begin
     Random.seed!(201906141455)
-    func = optimize(Monomials(local_point(3), 4))
     element = Element(3)
     quadpt = @SVector [1.0, 2.0, 3.0]
+
+    func = optimize(Monomials(local_point(3), 4))
     @test func(element, quadpt) ≈ [1 1 1 1 1; 1 2 4 8 16; 1 3 9 27 81]
+
+    func = optimize(Monomials(local_point(3), 4, 2))
+    @test func(element, quadpt) ≈ [0 0 1 1 1 1 1; 0 0 1 2 4 8 16; 0 0 1 3 9 27 81]
 
     @noallocs begin
         func = optimize(Monomials(local_point(3), 4))

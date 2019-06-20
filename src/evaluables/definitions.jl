@@ -211,34 +211,39 @@ end
 
 
 """
-    Monomials(arg, degree)
+    Monomials(arg, degree, padding=0)
 
-Computes all monomials of *arg* up to *degree*, yielding an array of
-size (size(arg)..., degree+1).
+Computes all monomials of *arg* up to *degree*, with *padding* leading
+zeros, yielding an array of size 
+
+    (size(arg)..., padding + degree + 1).
 """
-struct Monomials{D, T} <: Evaluable{T}
+struct Monomials{D, P, T} <: Evaluable{T}
     arg :: Evaluable
     storage :: T
 
-    function Monomials(arg::Evaluable, degree::Int)
-        newsize = (size(arg)..., degree + 1)
+    function Monomials(arg::Evaluable, degree::Int, padding::Int)
+        newsize = (size(arg)..., padding + degree + 1)
         rtype = marray(newsize, eltype(arg))
-        new{degree, rtype}(arg, rtype(undef))
+        new{degree, padding, rtype}(arg, rtype(undef))
     end
 end
 
+Monomials(arg, degree) = Monomials(arg, degree, 0)
+
 arguments(self::Monomials) = [self.arg]
 
-@generated function (self::Monomials{D})(_, arg) where {D}
+@generated function (self::Monomials{D, P})(_, arg) where {D, P}
     colons = [Colon() for _ in 1:ndims(self)-1]
     codes = [
-        :(self.storage[$(colons...), $(i+1)] .= self.storage[$(colons...), $i] .* arg)
+        :(self.storage[$(colons...), $(P+i+1)] .= self.storage[$(colons...), $(P+i)] .* arg)
         for i in 1:D
     ]
 
     quote
         @_inline_meta
-        self.storage[$(colons...), 1] .= $(one(eltype(self)))
+        self.storage[$(colons...), 1:$P] .= $(zero(eltype(self)))
+        self.storage[$(colons...), $(P+1)] .= $(one(eltype(self)))
         $(codes...)
         self.storage
     end
