@@ -1,9 +1,8 @@
-function Base.getproperty(self::Evaluable{T}, v::Symbol) where T<:NamedTuple
-    index = findfirst(x->x==v, T.parameters[1])
-    index == nothing && return getfield(self, v)
-    rtype = T.parameters[2].parameters[index]
-    GetProperty{v, rtype}(self)
-end
+# ==============================================================================
+# Miscellaneous
+
+flushright(arg::Evaluable, ndims::Int) = reshape(arg, ones(Int, length(size) - ndims)..., size(arg)...)
+flushright(arg::Evaluable, reference) = flushright(arg, ndims(reference))
 
 
 # ==============================================================================
@@ -26,9 +25,17 @@ end
 
 Base.:-(self::Evaluable) = Negate(self)
 
+function Base.getproperty(self::Evaluable{T}, v::Symbol) where T<:NamedTuple
+    index = findfirst(==(v), T.parameters[1])
+    index == nothing && return getfield(self, v)
+    rtype = T.parameters[2].parameters[index]
+    GetProperty{v, rtype}(self)
+end
+
 Base.inv(self::Evaluable) = Inv(self)
 
 Base.reshape(self::Evaluable, args...) = Reshape(self, args...)
+Base.reshape(self::Reshape, args...) = reshape(self.arg, args...)
 
 
 # ==============================================================================
