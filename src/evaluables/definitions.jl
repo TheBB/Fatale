@@ -89,9 +89,10 @@ struct Contract{Inds, Tinds, T} <: Evaluable{T}
         target_size = Tuple(dims[i] for i in tinds)
         rtype = marray(target_size, reduce(promote_type, map(eltype, args)))
 
+        any(arg isa Zeros for arg in args) && return Zeros(eltype(rtype), target_size...)
+
         Inds = Tuple{(Tuple{ind...} for ind in inds)...}
         Tinds = Tuple{tinds...}
-
         new{Inds, Tinds, rtype}(collect(args), rtype(undef))
     end
 end
@@ -277,6 +278,7 @@ struct Product{T} <: Evaluable{T}
     function Product(args...)
         rsize = broadcast_shape(map(size, args)...)
         rtype = marray(rsize, reduce(promote_type, map(eltype, args)))
+        any(arg isa Zeros for arg in args) && return Zeros(eltype(rtype), rsize...)
         new{rtype}(collect(args), rtype(undef))
     end
 end
