@@ -57,6 +57,8 @@ function grad(self::Sum, d::Int)
     Sum(terms...)
 end
 
+grad(self::Constant, d::Int) = Zeros(eltype(self), size(self)..., d)
+
 grad(self::Reshape, d::Int) = reshape(grad(self.arg, d), size(self)..., d)
 
 grad(self::Inv, d::Int) = -Contract(
