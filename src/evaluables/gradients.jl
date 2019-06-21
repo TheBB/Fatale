@@ -19,7 +19,7 @@ end
 function grad(self::Contract{Inds, Tinds}, d::Int) where {Inds, Tinds}
     inds = collect(Tuple(I.parameters) for I in Inds.parameters)
     tinds = Tuple(Tinds.parameters)
-    next = max(maximum(tinds), (maximum(ind) for ind in inds)...)
+    next = max(maximum(tinds), (maximum(ind) for ind in inds)...) + 1
 
     terms = Evaluable[]
     for (i, arg) in enumerate(self.args)
