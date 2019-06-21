@@ -51,6 +51,12 @@ function grad(self::Product, d::Int)
     Sum(terms...)
 end
 
+function grad(self::Sum, d::Int)
+    maxdims = maximum(ndims(term) for term in self.args)
+    terms = [grad(flushleft(factor, maxdims), d) for factor in self.args]
+    Sum(terms...)
+end
+
 grad(self::Reshape, d::Int) = reshape(grad(self.arg, d), size(self)..., d)
 
 grad(self::Inv, d::Int) = -Contract(

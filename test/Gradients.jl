@@ -44,9 +44,21 @@ end
     quadpt = @SVector [1.0, 2.0, 3.0]
     geom = local_point(3)
 
-    func = optimize(grad(reshape(geom, 1, :) .* geom, geom))
-    res = func(element, quadpt)
+    ufunc = grad(reshape(geom, 1, :) .* geom, geom)
+    res = optimize(ufunc)(element, quadpt)
     @test res[:,:,1] ≈ [2 2 3; 2 0 0; 3 0 0]
     @test res[:,:,2] ≈ [0 1 0; 1 4 3; 0 3 0]
     @test res[:,:,3] ≈ [0 0 1; 0 0 2; 1 2 6]
+
+    ufunc = grad(ufunc, geom)
+    res = optimize(ufunc)(element, quadpt)
+    @test res[:,:,1,1] ≈ [2 0 0; 0 0 0; 0 0 0]
+    @test res[:,:,1,2] ≈ [0 1 0; 1 0 0; 0 0 0]
+    @test res[:,:,1,3] ≈ [0 0 1; 0 0 0; 1 0 0]
+    @test res[:,:,2,1] ≈ [0 1 0; 1 0 0; 0 0 0]
+    @test res[:,:,2,2] ≈ [0 0 0; 0 2 0; 0 0 0]
+    @test res[:,:,2,3] ≈ [0 0 0; 0 0 1; 0 1 0]
+    @test res[:,:,3,1] ≈ [0 0 1; 0 0 0; 1 0 0]
+    @test res[:,:,3,2] ≈ [0 0 0; 0 0 1; 0 1 0]
+    @test res[:,:,3,3] ≈ [0 0 0; 0 0 0; 0 0 2]
 end
