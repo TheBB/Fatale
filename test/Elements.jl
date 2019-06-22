@@ -1,5 +1,5 @@
 @testset "Simplex" begin
-    ref = Simplex(1)
+    ref = SimplexReference(1)
     @test ndims(ref) == 1
     (pts, wts) = quadrule(ref, 3)
     @test length(pts) == 3
@@ -9,7 +9,7 @@ end
 
 
 @testset "Tensor" begin
-    ref = Tensor(Simplex(1), Simplex(1))
+    ref = TensorReference(SimplexReference(1), SimplexReference(1))
     @test ndims(ref) == 2
 
     (pts, wts) = quadrule(ref, 4)
