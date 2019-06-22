@@ -4,8 +4,9 @@ import Base: @_inline_meta
 import Base.Broadcast: broadcast_shape
 import Base.Iterators: isdone, Stateful, flatten, product
 using DataStructures
-using StaticArrays
 using LinearAlgebra
+using StaticArrays
+using UnsafeArrays
 
 using ..Elements
 using ..Transforms

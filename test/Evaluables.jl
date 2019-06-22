@@ -98,6 +98,42 @@ end
 end
 
 
+@testset "GetIndex" begin
+    Random.seed!(201906221119)
+    data = @SArray rand(3,5,7)
+
+    ufunc = Constant(data)[1, :, :]
+    @test size(ufunc) == (5, 7)
+    func = optimize(ufunc)
+    res = func(nothing, nothing)
+    @test res == data[1, :, :]
+
+    @noallocs begin
+        @bench $func(nothing, nothing)
+    end
+
+    ufunc = Constant(data)[3, :, 4]
+    @test size(ufunc) == (5,)
+    func = optimize(ufunc)
+    res = func(nothing, nothing)
+    @test res == data[3, :, 4]
+
+    @noallocs begin
+        @bench $func(nothing, nothing)
+    end
+
+    ufunc = Constant(data)[:, 2, :]
+    @test size(ufunc) == (3,7)
+    func = optimize(ufunc)
+    res = func(nothing, nothing)
+    @test res == data[:, 2, :]
+
+    @noallocs begin
+        @bench $func(nothing, nothing)
+    end
+end
+
+
 @testset "Inv" begin
     Random.seed!(201906191343)
 

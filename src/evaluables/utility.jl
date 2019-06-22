@@ -41,6 +41,8 @@ function Base.getproperty(self::Evaluable{T}, v::Symbol) where T<:NamedTuple
     GetProperty{v, rtype}(self)
 end
 
+Base.getindex(self::Evaluable, index...) = GetIndex(self, index...)
+
 Base.inv(self::Evaluable) = Inv(self)
 
 Base.reshape(self::Evaluable, args...) = Reshape(self, args...)

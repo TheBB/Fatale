@@ -152,6 +152,30 @@ Base.:(==)(l::Constant, r::Constant) = l.value == r.value
 
 
 """
+    GetIndex(arg, index...)
+
+An evaluable returning a view into another array.
+"""
+struct GetIndex{I,T} <: Evaluable{T}
+    arg :: Evaluable
+
+    function GetIndex(arg, index...)
+        @assert length(index) == ndims(arg)
+        newsize = Tuple(s for (s,i) in zip(size(arg), index) if i isa Colon)
+        rtype = marray(newsize, eltype(arg))
+        new{Tuple{index...}, rtype}(arg)
+    end
+end
+
+arguments(self::GetIndex) = [self.arg]
+
+@generated (::GetIndex{I})(_, arg) where I = quote
+    @_inline_meta
+    uview(arg, $(I.parameters...))
+end
+
+
+"""
     Inv(arg)
 
 An evaluable that computes the inverse of the two-dimensional argument
