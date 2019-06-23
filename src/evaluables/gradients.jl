@@ -59,9 +59,11 @@ end
 
 grad(self::Constant, d::Int) = Zeros(eltype(self), size(self)..., d)
 
-grad(self::Reshape, d::Int) = reshape(grad(self.arg, d), size(self)..., d)
+grad(self::GetIndex{I}, d::Int) where I = GetIndex(grad(self.arg, d), I.parameters..., :)
 
 grad(self::Inv, d::Int) = -Contract(
     (self, grad(self.arg, d), self),
     ((1,2), (2,3,5), (3,4)), (1,4,5)
 )
+
+grad(self::Reshape, d::Int) = reshape(grad(self.arg, d), size(self)..., d)
