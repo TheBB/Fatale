@@ -24,6 +24,25 @@ end
 end
 
 
+@testset "GetIndex" begin
+    Random.seed!(201906231109)
+    element = Element(3)
+    quadpt = @SVector [1.0, 2.0, 3.0]
+    geom = local_point(3)
+
+    ufunc = Monomials(geom, 4)
+
+    res = optimize(grad(ufunc[1,:], geom))(element, quadpt)
+    @test res ≈ [0 0 0; 1 0 0; 2 0 0; 3 0 0; 4 0 0]
+
+    res = optimize(grad(ufunc[2,:], geom))(element, quadpt)
+    @test res ≈ [0 0 0; 0 1 0; 0 4 0; 0 12 0; 0 32 0]
+
+    res = optimize(grad(ufunc[3,:], geom))(element, quadpt)
+    @test res ≈ [0 0 0; 0 0 1; 0 0 6; 0 0 27; 0 0 108]
+end
+
+
 @testset "Monomials" begin
     Random.seed!(201906201133)
     element = Element(3)

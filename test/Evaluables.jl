@@ -123,7 +123,7 @@ end
     end
 
     ufunc = Constant(data)[:, 2, :]
-    @test size(ufunc) == (3,7)
+    @test size(ufunc) == (3, 7)
     func = optimize(ufunc)
     res = func(nothing, nothing)
     @test res == data[:, 2, :]
