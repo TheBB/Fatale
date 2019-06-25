@@ -48,6 +48,8 @@ Base.size(::Type{<:Evaluable{T}}, i) where T <: StaticArray = size(T, i)
 Base.size(::Evaluable{T}, i) where T <: StaticArray = size(T, i)
 Base.ndims(::Type{<:Evaluable{T}}) where T <: StaticArray = ndims(T)
 Base.ndims(::Evaluable{T}) where T <: StaticArray = ndims(T)
+Base.length(::Type{<:Evaluable{T}}) where T <: StaticArray = length(T)
+Base.length(::Evaluable{T}) where T <: StaticArray = length(T)
 
 
 include("evaluables/definitions.jl")
