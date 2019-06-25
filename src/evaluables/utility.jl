@@ -39,7 +39,7 @@ end
 
 Base.:-(self::Evaluable) = Negate(self)
 
-Base.broadcasted(::typeof(*), left::Evaluable, right::Evaluable) = Product(left, right)
+Base.broadcasted(::typeof(*), args::Evaluable...) = Product(args...)
 
 function Base.getproperty(self::Evaluable{T}, v::Symbol) where T<:NamedTuple
     index = findfirst(==(v), T.parameters[1])
