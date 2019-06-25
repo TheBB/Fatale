@@ -329,10 +329,10 @@ struct Reshape{T} <: Evaluable{T}
     arg :: Evaluable
     
     function Reshape(arg, newsize...)
-        newsize = collect(newsize)
+        newsize = collect(Any, newsize)
         if (colon_index = findfirst(==(:), newsize)) != nothing
             in_length = prod(size(arg))
-            out_length = prod(k for k in newsize if k != (:))
+            out_length = all(==(:), newsize) ? 1 : prod(filter(!(==(:)), newsize))
             @assert in_length % out_length == 0
             newsize[colon_index] = div(in_length, out_length)
         end
