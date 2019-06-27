@@ -291,6 +291,29 @@ arguments(self::Negate) = [self.arg]
 
 
 """
+    Normalize(arg)
+
+Force the argument to resolve as a fully-realized array.
+"""
+struct Normalize{T} <: Evaluable{T}
+    arg :: Evaluable
+    storage :: T
+
+    function Normalize(arg)
+        rtype = marray(size(arg), eltype(arg))
+        new{rtype}(arg, rtype(undef))
+    end
+end
+
+arguments(self::Normalize) = [self.arg]
+
+@inline function (self::Normalize)(_, arg)
+    self.storage .= arg
+    self.storage
+end
+
+
+"""
     Product(args...)
 
 Elementwise product of arguments.

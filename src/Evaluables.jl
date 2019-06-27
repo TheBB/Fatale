@@ -14,7 +14,7 @@ using ..Transforms
 export evalorder
 export optimize
 export local_point, local_grad, global_point, global_grad, grad, insertaxis
-export Contract, Constant, Inv, Monomials, Product, Sum, Zeros
+export Contract, Constant, Inv, Monomials, Normalize, Product, Sum, Zeros
 
 
 """
