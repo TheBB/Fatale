@@ -100,7 +100,7 @@ end
 
 @testset "GetIndex" begin
     Random.seed!(201906221119)
-    data = @SArray rand(3,5,7)
+    data = @MArray rand(3,5,7)
 
     ufunc = Constant(data)[1, :, :]
     @test size(ufunc) == (5, 7)
@@ -138,20 +138,20 @@ end
     Random.seed!(201906191343)
 
     data = @SArray rand(1,1)
-    func = optimize(Inv(Constant(data)))
+    func = optimize(inv(Constant(data)))
     @test func(nothing, nothing) ≈ inv(data)
 
     data = @SArray rand(2,2)
-    func = optimize(Inv(Constant(data)))
+    func = optimize(inv(Constant(data)))
     @test func(nothing, nothing) ≈ inv(data)
 
     data = @SArray rand(3,3)
-    func = optimize(Inv(Constant(data)))
+    func = optimize(inv(Constant(data)))
     @test func(nothing, nothing) ≈ inv(data)
 
     @noallocs begin
         data = @SArray rand(3,3)
-        func = optimize(Inv(Constant(data)))
+        func = optimize(inv(Constant(data)))
         @bench $func(nothing, nothing)
     end
 end

@@ -14,7 +14,14 @@ using ..Transforms
 export evalorder
 export optimize
 export local_point, local_grad, global_point, global_grad, grad, insertaxis
-export Contract, Constant, Inv, Monomials, Normalize, Product, Sum, Zeros
+export Contract, Constant, Inv, Monomials, Product, Sum, Zeros
+
+
+abstract type Result end
+struct _Coords <: Result end
+struct _Array <: Result end
+struct _Element <: Result end
+struct _Transform <: Result end
 
 
 """
@@ -22,34 +29,19 @@ export Contract, Constant, Inv, Monomials, Normalize, Product, Sum, Zeros
 
 An object that, when evaluated, produces a value of type T.
 """
-abstract type Evaluable{T} end
+abstract type Evaluable{T <: Result} end
 
-restype(::Evaluable{T}) where T = T
-restype(::Type{<:Evaluable{T}}) where T = T
 arguments(::Evaluable) = Evaluable[]
 
-# The default hash and equals behaviour on evaluables is based
-# strictly on the types and arguments involved. This should be
-# sufficient for the vast majority of evaluables, but some
-# (e.g. constants) may override it.
-Base.hash(self::Evaluable, x::UInt64) = hash(typeof(self), hash(arguments(self), x))
-Base.:(==)(l::Evaluable, r::Evaluable) = typeof(l) == typeof(r) && arguments(l) == arguments(r)
 
-# Code generation for most evaluables involves calling the evaluable
-# object directly.
-codegen(::Type{<:Evaluable}, self, args...) = :($self($(args...)))
+# Default implementations for array interface
+Base.eltype(self::Evaluable{_Array}) = reduce(promote_type, map(eltype, arguments(self)))
+Base.size(self::Evaluable{_Array}, i) = size(self)[i]
+Base.ndims(self::Evaluable{_Array}) = length(size(self))
+Base.length(self::Evaluable{_Array}) = prod(size(self))
 
-
-Base.eltype(::Type{<:Evaluable{T}}) where T <: StaticArray = eltype(T)
-Base.eltype(::Evaluable{T}) where T <: StaticArray = eltype(T)
-Base.size(::Type{<:Evaluable{T}}) where T <: StaticArray = size(T)
-Base.size(::Evaluable{T}) where T <: StaticArray = size(T)
-Base.size(::Type{<:Evaluable{T}}, i) where T <: StaticArray = size(T, i)
-Base.size(::Evaluable{T}, i) where T <: StaticArray = size(T, i)
-Base.ndims(::Type{<:Evaluable{T}}) where T <: StaticArray = ndims(T)
-Base.ndims(::Evaluable{T}) where T <: StaticArray = ndims(T)
-Base.length(::Type{<:Evaluable{T}}) where T <: StaticArray = length(T)
-Base.length(::Evaluable{T}) where T <: StaticArray = length(T)
+# Evaluables of type Coords should also implement ndims, but it's not known in all cases
+Base.ndims(::Evaluable{_Coords}) = "?"
 
 
 include("evaluables/definitions.jl")
@@ -58,22 +50,12 @@ include("evaluables/gradients.jl")
 include("evaluables/compilation.jl")
 
 
-Base.show(io::IO, self::Evaluable{T}) where T = print(io, string(typeof(self).name.name), typerepr(T))
+Base.show(io::IO, self::Evaluable) = print(io, string(typeof(self).name.name), typerepr(self))
 
-typerepr(T) = _typerepr(T)
-typerepr(T::UnionAll) = "[?]"
-
-_typerepr(::Type{AbstractElement}) = "Element"
-_typerepr(::Type{AbstractTransform}) = "Transform"
-_typerepr(::Type{T}) where T <: StaticArray = string("<", join(size(T), ","), ">")
-_typerepr(::Type{T}) where T <: Tuple = string("(", join((typerepr(param) for param in T.parameters), ", "), ")")
-
-function _typerepr(::Type{T}) where T <: NamedTuple
-    names = T.parameters[1]
-    values = T.parameters[2].parameters
-    entries = join((string(name, "=", typerepr(value)) for (name, value) in zip(names, values)), ", ")
-    string("{", entries, "}")
-end
+typerepr(self::Evaluable{_Array}) = string("<", join(size(self), ","), ">")
+typerepr(self::Evaluable{_Coords}) = let n = ndims(self); "(point=<$n>, grad=<$n,$n>)" end
+typerepr(self::Evaluable{_Element}) = "(Element)"
+typerepr(self::Evaluable{_Transform}) = "(Transform)"
 
 
 """

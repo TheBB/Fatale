@@ -4,38 +4,36 @@ function grad(self::Evaluable, geom::Evaluable)
     grad(self, dims) * inv(grad(geom, dims))
 end
 
-function grad(self::GetProperty{:point}, d::Int)
+function grad(self::GetProperty{_Array}, d::Int)
+    @assert self.name in [:point, :grad]
     @assert self.arg isa ApplyTrans
     @assert d == size(self, 1)
-    self.arg.grad
+
+    if self.name == :point
+        GetProperty(self.arg, :grad)
+    else
+        Zeros(eltype(self), size(self)..., d)
+    end
 end
 
-function grad(self::GetProperty{:grad}, d::Int)
-    @assert self.arg isa ApplyTrans
-    @assert d == size(self, 1) == size(self, 2)
-    Zeros(eltype(self), size(self)..., d)
-end
-
-function grad(self::Contract{Inds, Tinds}, d::Int) where {Inds, Tinds}
-    inds = collect(Tuple(I.parameters) for I in Inds.parameters)
-    tinds = Tuple(Tinds.parameters)
-    next = max(maximum(tinds), (maximum(ind) for ind in inds)...) + 1
+function grad(self::Contract, d::Int)
+    next = max(maximum(self.target), (maximum(ind) for ind in self.indices)...) + 1
 
     terms = Evaluable[]
     for (i, arg) in enumerate(self.args)
         grad_arg = grad(arg, d)
         push!(terms, Contract(
             (self.args[1:i-1]..., grad_arg, self.args[i+1:end]...),
-            (inds[1:i-1]..., (inds[i]..., next), inds[i+1:end]...),
-            (tinds..., next)
+            (self.indices[1:i-1]..., (self.indices[i]..., next), self.indices[i+1:end]...),
+            (self.target..., next)
         ))
     end
     Sum(terms...)
 end
 
-function grad(self::Monomials{D, P}, d::Int) where {D, P}
-    newmono = Monomials(self.arg, D-1, P+1)
-    scale = flushright(Constant(SVector(zeros(Int, P+1)..., 1:D...)), newmono)
+function grad(self::Monomials, d::Int) where {D, P}
+    newmono = Monomials(self.arg, self.degree-1, self.padding+1)
+    scale = flushright(Constant(SVector(zeros(Int, self.padding+1)..., 1:self.degree...)), newmono)
     chain = grad(insertaxis(self.arg; right=1), d)
     insertaxis(newmono .* scale; right=1) .* chain
 end
@@ -59,7 +57,7 @@ end
 
 grad(self::Constant, d::Int) = Zeros(eltype(self), size(self)..., d)
 
-grad(self::GetIndex{I}, d::Int) where I = GetIndex(grad(self.arg, d), I.parameters..., :)
+grad(self::GetIndex, d::Int) where I = GetIndex(grad(self.arg, d), self.index..., :)
 
 grad(self::Inv, d::Int) = -Contract(
     (self, grad(self.arg, d), self),

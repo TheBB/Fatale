@@ -17,7 +17,6 @@ function _linearize!(data, self::Evaluable)
 end
 
 
-
 struct OptimizedEvaluable{T, I, K} <: Evaluable{T}
     funcs :: K
     OptimizedEvaluable{T,I}(funcs::K) where {T,I,K} = new{T,I,K}(funcs)
@@ -30,9 +29,9 @@ Create an optimized and directly callable object from an evaluable.
 """
 function optimize(self::Evaluable{T}) where T
     sequence = linearize(self)
-    funcs = Tuple(stage.func for stage in sequence)
+    callables = Tuple(codegen(stage.func) for stage in sequence)
     inds = Tuple{(Tuple{stage.arginds...} for stage in sequence)...}
-    OptimizedEvaluable{T, inds}(funcs)
+    OptimizedEvaluable{T, inds}(callables)
 end
 
 """
@@ -54,7 +53,8 @@ Evaluate the optimized evaluable in an evaluation point.
     end
 
     for (i, (functype, sym, args)) in enumerate(zip(K.parameters, syms, argsyms))
-        code = codegen(functype, :(self.funcs[$i]), :input, args...)
+        code = :(self.funcs[$i](input, $(args...)))
+        # code = codegen(functype, :(self.funcs[$i]), :input, args...)
         push!(codes, :($sym = $code))
     end
 

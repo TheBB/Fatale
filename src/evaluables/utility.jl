@@ -20,14 +20,6 @@ end
 
 
 # ==============================================================================
-# Type constructors
-
-staticarray(size, eltype, root) = root{Tuple{size...}, eltype, length(size), prod(size)}
-marray(size, eltype) = staticarray(size, eltype, MArray)
-sarray(size, eltype) = staticarray(size, eltype, SArray)
-
-
-# ==============================================================================
 # Methods to other functions
 
 function Base.:*(left::Evaluable, right::Evaluable)
@@ -39,14 +31,8 @@ end
 
 Base.:-(self::Evaluable) = Negate(self)
 
+Base.broadcasted(::typeof(+), args::Evaluable...) = Sum(args...)
 Base.broadcasted(::typeof(*), args::Evaluable...) = Product(args...)
-
-function Base.getproperty(self::Evaluable{T}, v::Symbol) where T<:NamedTuple
-    index = findfirst(==(v), T.parameters[1])
-    index == nothing && return getfield(self, v)
-    rtype = T.parameters[2].parameters[index]
-    GetProperty{v, rtype}(self)
-end
 
 Base.getindex(self::Evaluable, index...) = GetIndex(self, index...)
 
@@ -59,15 +45,15 @@ Base.reshape(self::Reshape, args...) = reshape(self.arg, args...)
 # ==============================================================================
 # Convenience constructors
 
-local_transform() = ElementData{:loctrans, AbstractTransform}()
-global_transform() = ElementData{:globtrans, AbstractTransform}()
+local_transform() = ElementData{_Transform}(:loctrans)
+global_transform() = ElementData{_Transform}(:globtrans)
 
-input_coords() = Argument{:point,Coords}()
+input_coords() = Argument{_Coords}(:point)
 
 local_coords(n) = ApplyTrans(local_transform(), input_coords(), n)
-local_point(n) = local_coords(n).point
-local_grad(n) = local_coords(n).grad
+local_point(n) = GetProperty(local_coords(n), :point)
+local_grad(n) = GetProperty(local_coords(n), :grad)
 
 global_coords(n) = ApplyTrans(global_transform(), local_coords(n), n)
-global_point(n) = global_coords(n).point
-global_grad(n) = global_coords(n).grad
+global_point(n) = GetProperty(global_coords(n), :point)
+global_grad(n) = GetProperty(global_coords(n), :grad)
