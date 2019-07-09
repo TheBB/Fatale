@@ -7,6 +7,7 @@ using StaticArrays
 using Fatale.Transforms
 using Fatale.Elements
 using Fatale.Evaluables
+using Fatale.Domains
 
 
 # Lightweight elements for testing
@@ -59,4 +60,8 @@ end
 
 @testset "Gradients" begin
     include("Gradients.jl")
+end
+
+@testset "Bases" begin
+    include("Bases.jl")
 end
