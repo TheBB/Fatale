@@ -409,10 +409,20 @@ struct __Reshape{S,T}
     __Reshape(val) = new{size(val), typeof(val)}(val)
 end
 @generated function (self::__Reshape{S})(_, arg) where S
-    quote
-        @_inline_meta
-        self.val .= reshape(arg, $(S...))
-        self.val
+    if arg <: SArray
+        quote
+            SArray{Tuple{$(S...)}}(arg)
+        end
+    else
+        quote
+            @_inline_meta
+            unsafe_copyto!(
+                Base.unsafe_convert(Ptr{$(eltype(arg))}, self.val),
+                Base.unsafe_convert(Ptr{$(eltype(arg))}, arg),
+                $(length(arg)),
+            )
+            self.val
+        end
     end
 end
 
