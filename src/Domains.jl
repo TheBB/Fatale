@@ -2,6 +2,7 @@ module Domains
 
 using StaticArrays
 
+using ..Transforms
 using ..Elements
 using ..Evaluables
 
@@ -25,7 +26,7 @@ struct TensorElement{D} <: AbstractElement{D}
     index :: NTuple{D, Int}
 end
 
-Elements.globtrans(self::TensorElement{D}) where D = Shift(SVector{D,Float64}(I) - 1.0)
+Elements.globtrans(self::TensorElement{D}) where D = Shift(SVector{D,Float64}(self.index) - 1.0)
 
 
 struct TensorDomain{D} <: Domain{TensorElement{D}, TensorReference{NTuple{D,SimplexReference{1}}}, D}

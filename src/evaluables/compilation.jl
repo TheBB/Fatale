@@ -54,7 +54,6 @@ Evaluate the optimized evaluable in an evaluation point.
 
     for (i, (functype, sym, args)) in enumerate(zip(K.parameters, syms, argsyms))
         code = :(self.funcs[$i](input, $(args...)))
-        # code = codegen(functype, :(self.funcs[$i]), :input, args...)
         push!(codes, :($sym = $code))
     end
 

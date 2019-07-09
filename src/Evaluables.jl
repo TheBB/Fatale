@@ -35,7 +35,7 @@ arguments(::Evaluable) = Evaluable[]
 
 
 # Default implementations for array interface
-Base.eltype(self::Evaluable{_Array}) = reduce(promote_type, map(eltype, arguments(self)))
+Base.eltype(self::Evaluable{_Array}) = mapreduce(eltype, promote_type, arguments(self))
 Base.size(self::Evaluable{_Array}, i) = size(self)[i]
 Base.ndims(self::Evaluable{_Array}) = length(size(self))
 Base.length(self::Evaluable{_Array}) = prod(size(self))

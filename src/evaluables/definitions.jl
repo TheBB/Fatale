@@ -111,6 +111,7 @@ struct Contract <: Evaluable{_Array}
     function Contract(args::Tuple{Vararg{Evaluable{_Array}}}, indices::Tuple{Vararg{Dims}}, target::Dims)
         @assert length(args) == length(indices)
         @assert all(ndims(arg) == length(ind) for (arg, ind) in zip(args, indices))
+        @assert all(!(k isa Zeros) for k in args)
 
         dims = _sizedict(args, indices)
         for (arg, ind) in zip(args, indices)
@@ -171,8 +172,10 @@ _sizedict(args, inds) = OrderedDict(flatten(
 An evaluable returning the constant object *v*.
 """
 struct Constant <: Evaluable{_Array}
-    value :: AbstractArray
+    value :: StaticArray
 end
+
+Constant(value::AbstractArray) = Constant(MArray{Tuple{size(value)...}}(value))
 
 Base.eltype(self::Constant) = eltype(self.value)
 Base.ndims(self::Constant) = ndims(self.value)
@@ -372,6 +375,7 @@ end
 @generated function (self::__Product{T})(_, args...) where T
     argcodes = [:(args[$i]) for i in 1:length(args)]
     quote
+        @_inline_meta
         self.val .= .*($(argcodes...))
         self.val
     end
@@ -437,6 +441,7 @@ struct Sum <: Evaluable{_Array}
     dims :: Dims
 
     function Sum(args...)
+        length(args) == 1 && return args[1]
         dims = broadcast_shape(map(size, args)...)
         new(collect(Evaluable, args), dims)
     end
