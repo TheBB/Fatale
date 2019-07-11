@@ -68,7 +68,7 @@ end
 end
 
 
-@testset "Product" begin
+@testset "Multiply" begin
     Random.seed!(201906201233)
     element = Element(3)
     quadpt = @SVector [1.0, 2.0, 3.0]

@@ -33,8 +33,8 @@ end
 
 Base.:-(self::Evaluable) = Negate(self)
 
-Base.broadcasted(::typeof(+), args::Evaluable...) = Sum(args...)
-Base.broadcasted(::typeof(*), args::Evaluable...) = Product(args...)
+Base.broadcasted(::typeof(+), args::Evaluable...) = Add(args...)
+Base.broadcasted(::typeof(*), args::Evaluable...) = Multiply(args...)
 
 Base.getindex(self::Evaluable, index...) = GetIndex(self, index...)
 

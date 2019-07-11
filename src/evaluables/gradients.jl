@@ -16,6 +16,12 @@ function grad(self::GetProperty{_Array}, d::Int)
     end
 end
 
+function grad(self::Add, d::Int)
+    maxdims = maximum(ndims(term) for term in self.args)
+    terms = [grad(flushleft(factor, maxdims), d) for factor in self.args]
+    Add(terms...)
+end
+
 function grad(self::Contract, d::Int)
     next = max(maximum(self.target), (maximum(ind) for ind in self.indices)...) + 1
 
@@ -30,7 +36,7 @@ function grad(self::Contract, d::Int)
             ))
         end
     end
-    Sum(terms...)
+    Add(terms...)
 end
 
 function grad(self::Monomials, d::Int) where {D, P}
@@ -40,21 +46,15 @@ function grad(self::Monomials, d::Int) where {D, P}
     insertaxis(newmono .* scale; right=1) .* chain
 end
 
-function grad(self::Product, d::Int)
+function grad(self::Multiply, d::Int)
     maxdims = maximum(ndims(factor) for factor in self.args)
     reshaped = [insertaxis(flushleft(factor, maxdims); right=1) for factor in self.args]
     terms = Evaluable[]
     for (i, factor) in enumerate(self.args)
-        term = Product(reshaped[1:i-1]..., grad(flushleft(factor, maxdims), d), reshaped[i+1:end]...)
+        term = Multiply(reshaped[1:i-1]..., grad(flushleft(factor, maxdims), d), reshaped[i+1:end]...)
         push!(terms, term)
     end
-    Sum(terms...)
-end
-
-function grad(self::Sum, d::Int)
-    maxdims = maximum(ndims(term) for term in self.args)
-    terms = [grad(flushleft(factor, maxdims), d) for factor in self.args]
-    Sum(terms...)
+    Add(terms...)
 end
 
 grad(self::Constant, d::Int) = Zeros(eltype(self), size(self)..., d)

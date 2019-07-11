@@ -51,6 +51,25 @@ end
 end
 
 
+@testset "Add" begin
+    Random.seed!(201906191836)
+
+    arr1 = @SArray rand(1,2,3)
+    arr2 = @SArray rand(2,2)
+    arr3 = @SArray rand(2,1,3)
+
+    func = Add(Constant(arr1), Constant(arr2), Constant(arr3))
+    @test size(func) == (2, 2, 3)
+    func = optimize(func)
+
+    @test func(nothing, nothing) ≈ .+(arr1, arr2, arr3)
+
+    @noallocs begin
+        @bench $func(nothing, nothing)
+    end
+end
+
+
 @testset "Contract" begin
     Random.seed!(201906171327)
 
@@ -177,11 +196,18 @@ end
 end
 
 
-@testset "Negate" begin
-    Random.seed!(201906192304)
-    data = @SArray rand(5,2)
-    func = optimize(-Constant(data))
-    @test func(nothing, nothing) == -data
+@testset "Multiply" begin
+    Random.seed!(201906191850)
+
+    arr1 = @SArray rand(1,2,3)
+    arr2 = @SArray rand(2,2)
+    arr3 = @SArray rand(2,1,3)
+
+    func = Multiply(Constant(arr1), Constant(arr2), Constant(arr3))
+    @test size(func) == (2, 2, 3)
+    func = optimize(func)
+
+    @test func(nothing, nothing) ≈ .*(arr1, arr2, arr3)
 
     @noallocs begin
         @bench $func(nothing, nothing)
@@ -189,18 +215,11 @@ end
 end
 
 
-@testset "Product" begin
-    Random.seed!(201906191850)
-
-    arr1 = @SArray rand(1,2,3)
-    arr2 = @SArray rand(2,2)
-    arr3 = @SArray rand(2,1,3)
-
-    func = Product(Constant(arr1), Constant(arr2), Constant(arr3))
-    @test size(func) == (2, 2, 3)
-    func = optimize(func)
-
-    @test func(nothing, nothing) ≈ .*(arr1, arr2, arr3)
+@testset "Negate" begin
+    Random.seed!(201906192304)
+    data = @SArray rand(5,2)
+    func = optimize(-Constant(data))
+    @test func(nothing, nothing) == -data
 
     @noallocs begin
         @bench $func(nothing, nothing)
@@ -223,25 +242,6 @@ end
 
     @noallocs begin
         func = optimize(reshape(Constant(arr), 3, 7, 5))
-        @bench $func(nothing, nothing)
-    end
-end
-
-
-@testset "Sum" begin
-    Random.seed!(201906191836)
-
-    arr1 = @SArray rand(1,2,3)
-    arr2 = @SArray rand(2,2)
-    arr3 = @SArray rand(2,1,3)
-
-    func = Sum(Constant(arr1), Constant(arr2), Constant(arr3))
-    @test size(func) == (2, 2, 3)
-    func = optimize(func)
-
-    @test func(nothing, nothing) ≈ .+(arr1, arr2, arr3)
-
-    @noallocs begin
         @bench $func(nothing, nothing)
     end
 end

@@ -105,6 +105,35 @@ end
 
 
 """
+    Add(args...)
+
+Elementwise sum of arguments.
+"""
+struct Add <: Evaluable{_Array}
+    args :: Vector{Evaluable{_Array}}
+    dims :: Dims
+
+    function Add(args...)
+        length(args) == 1 && return args[1]
+        dims = broadcast_shape(map(size, args)...)
+        new(collect(Evaluable, args), dims)
+    end
+end
+
+arguments(self::Add) = self.args
+Base.size(self::Add) = self.dims
+
+codegen(self::Add) = __Add()
+struct __Add end
+@generated function (self::__Add)(_, args...)
+    argcodes = [:(args[$i]) for i in 1:length(args)]
+    quote
+        .+($(argcodes...))
+    end
+end
+
+
+"""
     Contract((args...), (indices...), target)
 
 Compute a fully unrolled tensor contraction.
@@ -292,6 +321,34 @@ end
 
 
 """
+    Multiply(args...)
+
+Elementwise product of arguments.
+"""
+struct Multiply <: Evaluable{_Array}
+    args :: Vector{Evaluable{_Array}}
+    dims :: Dims
+
+    function Multiply(args...)
+        dims = broadcast_shape(map(size, args)...)
+        new(collect(Evaluable, args), dims)
+    end
+end
+
+arguments(self::Multiply) = self.args
+Base.size(self::Multiply) = self.dims
+
+codegen(self::Multiply) = __Multiply()
+struct __Multiply end
+@generated function (self::__Multiply)(_, args...)
+    argcodes = [:(args[$i]) for i in 1:length(args)]
+    quote
+        .*($(argcodes...))
+    end
+end
+
+
+"""
     Negate(arg)
 
 Negate the argument.
@@ -306,34 +363,6 @@ Base.size(self::Negate) = size(self.arg)
 codegen(self::Negate) = __Negate()
 struct __Negate end
 @inline (::__Negate)(_, arg) = -arg
-
-
-"""
-    Product(args...)
-
-Elementwise product of arguments.
-"""
-struct Product <: Evaluable{_Array}
-    args :: Vector{Evaluable{_Array}}
-    dims :: Dims
-
-    function Product(args...)
-        dims = broadcast_shape(map(size, args)...)
-        new(collect(Evaluable, args), dims)
-    end
-end
-
-arguments(self::Product) = self.args
-Base.size(self::Product) = self.dims
-
-codegen(self::Product) = __Product()
-struct __Product end
-@generated function (self::__Product)(_, args...)
-    argcodes = [:(args[$i]) for i in 1:length(args)]
-    quote
-        .*($(argcodes...))
-    end
-end
 
 
 """
@@ -368,35 +397,6 @@ end
 @generated (self::__Reshape{S})(_, arg) where S = quote
     @_inline_meta
     SArray{Tuple{$(S...)}}(arg)
-end
-
-
-"""
-    Sum(args...)
-
-Elementwise sum of arguments.
-"""
-struct Sum <: Evaluable{_Array}
-    args :: Vector{Evaluable{_Array}}
-    dims :: Dims
-
-    function Sum(args...)
-        length(args) == 1 && return args[1]
-        dims = broadcast_shape(map(size, args)...)
-        new(collect(Evaluable, args), dims)
-    end
-end
-
-arguments(self::Sum) = self.args
-Base.size(self::Sum) = self.dims
-
-codegen(self::Sum) = __Sum()
-struct __Sum end
-@generated function (self::__Sum)(_, args...)
-    argcodes = [:(args[$i]) for i in 1:length(args)]
-    quote
-        .+($(argcodes...))
-    end
 end
 
 
