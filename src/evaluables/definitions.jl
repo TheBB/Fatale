@@ -16,7 +16,7 @@ end
 
 
 """
-    ElementData{V::Symbol, T}(args...)
+    ElementData{T}(args...)
 
 An evaluable that accesses element data named *V* of type *T*. Some
 standard names are defined:
@@ -32,8 +32,14 @@ them, that is, there is a method of Fatale.Elements.elementdata
 struct ElementData{T} <: Evaluable{T}
     name :: Symbol
     args :: Tuple
-    ElementData{T}(name, args...) where T = new{T}(name, args)
+    size
+    eltype
+
+    ElementData{T}(name, args...; size=nothing, eltype=nothing) where T = new{T}(name, args, size, eltype)
 end
+
+Base.size(self::ElementData{_Array}) = self.size
+Base.eltype(self::ElementData{_Array}) = self.eltype
 
 codegen(self::ElementData) = __ElementData{self.name}(self.args)
 struct __ElementData{V,T}
