@@ -151,12 +151,11 @@ end
     end
 
     quote
-        @_inline_meta
         @inbounds begin
             self.val .= zero(eltype(self.val))
             $(codes...)
         end
-        self.val
+        SArray(self.val)
     end
 end
 
@@ -172,10 +171,10 @@ _sizedict(args, inds) = OrderedDict(flatten(
 An evaluable returning the constant object *v*.
 """
 struct Constant <: Evaluable{_Array}
-    value :: StaticArray
+    value :: SArray
 end
 
-Constant(value::AbstractArray) = Constant(MArray{Tuple{size(value)...}}(value))
+Constant(value::AbstractArray) = Constant(SArray{Tuple{size(value)...}}(value))
 
 Base.eltype(self::Constant) = eltype(self.value)
 Base.ndims(self::Constant) = ndims(self.value)
@@ -206,15 +205,13 @@ end
 arguments(self::GetIndex) = Evaluable[self.arg]
 Base.size(self::GetIndex) = Tuple(s for (s,i) in zip(size(self.arg), self.index) if i isa Colon)
 
-codegen(self::GetIndex) = __GetIndex(self.index, @MArray zeros(eltype(self), size(self)...))
-struct __GetIndex{I,T}
-    val :: T
-    __GetIndex(I, val) = new{I, typeof(val)}(val)
+codegen(self::GetIndex) = __GetIndex(self.index)
+struct __GetIndex{I}
+    __GetIndex(I) = new{I}()
 end
 @generated (self::__GetIndex{I})(_, arg) where I = quote
     @_inline_meta
-    self.val .= arg[$(I...)]
-    self.val
+    arg[$(I...)]
 end
 
 
@@ -230,7 +227,7 @@ struct Inv <: Evaluable{_Array}
     function Inv(arg::Evaluable)
         @assert ndims(arg) == 2
         @assert size(arg, 1) == size(arg, 2)
-        @assert size(arg, 1) < 4
+        @assert size(arg, 1) <= 14
         new(arg)
     end
 end
@@ -241,53 +238,9 @@ Base.eltype(self::Inv) = let t = eltype(self.arg)
     t <: Integer ? Float64 : t
 end
 
-codegen(self::Inv) = __Inv(@MArray zeros(eltype(self), size(self)...))
-struct __Inv{T}
-    val :: T
-end
-@generated function (self::__Inv)(_, arg)
-    dims = size(arg, 1)
-    T = eltype(arg)
-    if dims == 1
-        quote
-            @inbounds begin
-                self.val[1,1] = $(one(T)) / arg[1,1]
-            end
-            self.val
-        end
-    elseif dims == 2
-        quote
-            @inbounds begin
-                self.val[1,1] = arg[2,2]
-                self.val[2,2] = arg[1,1]
-                self.val[1,2] = -arg[1,2]
-                self.val[2,1] = -arg[2,1]
-                self.val ./= (arg[1,1] * arg[2,2] - arg[1,2] * arg[2,1])
-            end
-            self.val
-        end
-    elseif dims == 3
-        quote
-            @inbounds begin
-                self.val[1,1] = arg[2,2] * arg[3,3] - arg[2,3] * arg[3,2]
-                self.val[2,1] = arg[2,3] * arg[3,1] - arg[2,1] * arg[3,3]
-                self.val[3,1] = arg[2,1] * arg[3,2] - arg[2,2] * arg[3,1]
-                self.val[1,2] = arg[1,3] * arg[3,2] - arg[1,2] * arg[3,3]
-                self.val[2,2] = arg[1,1] * arg[3,3] - arg[1,3] * arg[3,1]
-                self.val[3,2] = arg[1,2] * arg[3,1] - arg[1,1] * arg[3,2]
-                self.val[1,3] = arg[1,2] * arg[2,3] - arg[1,3] * arg[2,2]
-                self.val[2,3] = arg[1,3] * arg[2,1] - arg[1,1] * arg[2,3]
-                self.val[3,3] = arg[1,1] * arg[2,2] - arg[1,2] * arg[2,1]
-                self.val ./= (
-                    arg[1,1] * self.val[1,1] +
-                    arg[1,2] * self.val[2,1] +
-                    arg[1,3] * self.val[3,1]
-                )
-            end
-            self.val
-        end
-    end
-end
+codegen(self::Inv) = __Inv()
+struct __Inv end
+@inline (::__Inv)(_, arg) = inv(arg)
 
 
 """
@@ -322,13 +275,12 @@ end
     ]
 
     quote
-        @_inline_meta
         @inbounds begin
             self.val[$(colons...), 1:$P] .= $(zero(eltype(arg)))
             self.val[$(colons...), $(P+1)] .= $(one(eltype(arg)))
             $(codes...)
         end
-        self.val
+        SArray(self.val)
     end
 end
 
@@ -368,16 +320,12 @@ end
 arguments(self::Product) = self.args
 Base.size(self::Product) = self.dims
 
-codegen(self::Product) = __Product(@MArray zeros(eltype(self), self.dims...))
-struct __Product{T}
-    val :: T
-end
-@generated function (self::__Product{T})(_, args...) where T
+codegen(self::Product) = __Product()
+struct __Product end
+@generated function (self::__Product)(_, args...)
     argcodes = [:(args[$i]) for i in 1:length(args)]
     quote
-        @_inline_meta
-        self.val .= .*($(argcodes...))
-        self.val
+        .*($(argcodes...))
     end
 end
 
@@ -407,27 +355,13 @@ end
 arguments(self::Reshape) = Evaluable[self.arg]
 Base.size(self::Reshape) = self.shape
 
-codegen(self::Reshape) = __Reshape(@MArray zeros(eltype(self), size(self)...))
-struct __Reshape{S,T}
-    val :: T
-    __Reshape(val) = new{size(val), typeof(val)}(val)
+codegen(self::Reshape) = __Reshape(size(self))
+struct __Reshape{S}
+    __Reshape(size) = new{size}()
 end
-@generated function (self::__Reshape{S})(_, arg) where S
-    if arg <: SArray
-        quote
-            SArray{Tuple{$(S...)}}(arg)
-        end
-    else
-        quote
-            @_inline_meta
-            unsafe_copyto!(
-                Base.unsafe_convert(Ptr{$(eltype(arg))}, self.val),
-                Base.unsafe_convert(Ptr{$(eltype(arg))}, arg),
-                $(length(arg)),
-            )
-            self.val
-        end
-    end
+@generated (self::__Reshape{S})(_, arg) where S = quote
+    @_inline_meta
+    SArray{Tuple{$(S...)}}(arg)
 end
 
 
@@ -450,15 +384,12 @@ end
 arguments(self::Sum) = self.args
 Base.size(self::Sum) = self.dims
 
-codegen(self::Sum) = __Sum(@MArray zeros(eltype(self), self.dims...))
-struct __Sum{T}
-    val :: T
-end
-@generated function (self::__Sum{T})(_, args...) where T
+codegen(self::Sum) = __Sum()
+struct __Sum end
+@generated function (self::__Sum)(_, args...)
     argcodes = [:(args[$i]) for i in 1:length(args)]
     quote
-        self.val .= .+($(argcodes...))
-        self.val
+        .+($(argcodes...))
     end
 end
 
@@ -478,7 +409,7 @@ Zeros(dims::Int...) = Zeros(Float64, dims...)
 Base.eltype(self::Zeros) = self.eltype
 Base.size(self::Zeros) = self.dims
 
-codegen(self::Zeros) = __Zeros(@MArray zeros(self.eltype, self.dims...))
+codegen(self::Zeros) = __Zeros(@SArray zeros(self.eltype, self.dims...))
 struct __Zeros{T}
     val :: T
     __Zeros(val) = new{typeof(val)}(val)
