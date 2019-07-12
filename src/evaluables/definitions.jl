@@ -372,6 +372,12 @@ end
 
 Multiply(self::Evaluable) = self
 Multiply(left::Evaluable, right::Evaluable) = Multiply((left, right))
+Multiply(left::Inflate, right::Inflate) =
+    Inflate(Multiply(left.arg, right), left.indices, left.newsize, left.axis)
+Multiply(left::Inflate, right::Evaluable) =
+    Inflate(Multiply(left.arg, right), left.indices, left.newsize, left.axis)
+Multiply(left::Evaluable, right::Inflate) =
+    Inflate(Multiply(left, right.arg), right.indices, right.newsize, right.axis)
 
 arguments(self::Multiply) = self.args
 Base.size(self::Multiply) = self.dims
