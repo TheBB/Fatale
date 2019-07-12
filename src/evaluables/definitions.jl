@@ -405,18 +405,21 @@ Reshape *arg* to a new size.
 struct Reshape <: Evaluable{_Array}
     arg :: Evaluable{_Array}
     shape :: Dims
+    Reshape(arg, newsize...) = new(arg, Tuple(newsize))
+end
 
-    function Reshape(arg, newsize...)
-        newsize = collect(Any, newsize)
-        if (colon_index = findfirst(==(:), newsize)) != nothing
-            in_length = prod(size(arg))
-            out_length = all(==(:), newsize) ? 1 : prod(filter(!(==(:)), newsize))
-            @assert in_length % out_length == 0
-            newsize[colon_index] = div(in_length, out_length)
-        end
-        @assert all(k != (:) for k in newsize)
-        new(arg, Tuple(newsize))
-    end
+function Reshape(self::Inflate, newsize...)
+    infaxis = self.axis
+    before = prod(size(self)[1:infaxis-1])
+
+    newsize = collect(Int, newsize)
+    new_infaxis = findfirst(==(before), cumprod(newsize))
+    @assert new_infaxis != nothing
+    new_infaxis += 1
+    @assert newsize[new_infaxis] == size(self, infaxis)
+
+    newsize[new_infaxis] = size(self.arg, infaxis)
+    Inflate(reshape(self.arg, newsize...), self.indices, self.newsize, new_infaxis)
 end
 
 arguments(self::Reshape) = Evaluable[self.arg]

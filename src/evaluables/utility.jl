@@ -40,7 +40,19 @@ Base.getindex(self::Evaluable, index...) = GetIndex(self, index...)
 
 Base.inv(self::Evaluable) = Inv(self)
 
-Base.reshape(self::Evaluable, args...) = Reshape(self, args...)
+function Base.reshape(self::Evaluable, newsize...)
+    newsize = collect(Any, newsize)
+    if (colon_index = findfirst(==(:), newsize)) != nothing
+        in_length = prod(size(self))
+        out_length = all(==(:), newsize) ? 1 : prod(filter(!(==(:)), newsize))
+        @assert in_length % out_length == 0
+        newsize[colon_index] = div(in_length, out_length)
+    end
+    @assert all(k != (:) for k in newsize)
+    @assert prod(newsize) == prod(size(self))
+    Reshape(self, newsize...)
+end
+
 Base.reshape(self::Reshape, args...) = reshape(self.arg, args...)
 Base.reshape(self::Constant, args...) = Constant(reshape(self.value, args...))
 
