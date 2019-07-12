@@ -105,6 +105,38 @@ end
 
 
 """
+    Inflate(arg, indices, newsize, axis)
+
+Inflate the dimension number *axis* of *arg* to have size *newsize*,
+using *indices* for placing.
+"""
+struct Inflate <: Evaluable{_Array}
+    arg :: Evaluable{_Array}
+    indices :: Evaluable{_Array}
+    newsize :: Int
+    axis :: Int
+
+    function Inflate(arg, indices, newsize, axis)
+        @assert 1 <= axis <= ndims(arg)
+        @assert ndims(indices) == 1
+        @assert size(indices, 1) == size(arg, axis)
+        new(arg, indices, newsize, axis)
+    end
+end
+
+function Inflate(arg, indices, newsize)
+    @assert ndims(arg) == 1
+    Inflate(arg, indices, newsize, 1)
+end
+
+arguments(self::Inflate) = Evaluable[self.arg, self.indices]
+Base.size(self::Inflate) = Tuple(
+    i == self.axis ? self.newsize : size(self.arg, i)
+    for i in 1:ndims(self.arg)
+)
+
+
+"""
     Add(args...)
 
 Elementwise sum of arguments.
