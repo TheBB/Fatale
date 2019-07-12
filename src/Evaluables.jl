@@ -33,12 +33,15 @@ abstract type Evaluable{T <: Result} end
 
 arguments(::Evaluable) = Evaluable[]
 
+# Some type aliases that will be useful
+const ArrayEvaluable = Evaluable{_Array}
+const VarTuple{K} = Tuple{Vararg{K}}
 
 # Default implementations for array interface
-Base.eltype(self::Evaluable{_Array}) = mapreduce(eltype, promote_type, arguments(self))
-Base.size(self::Evaluable{_Array}, i) = size(self)[i]
-Base.ndims(self::Evaluable{_Array}) = length(size(self))
-Base.length(self::Evaluable{_Array}) = prod(size(self))
+Base.eltype(self::ArrayEvaluable) = mapreduce(eltype, promote_type, arguments(self))
+Base.size(self::ArrayEvaluable, i) = size(self)[i]
+Base.ndims(self::ArrayEvaluable) = length(size(self))
+Base.length(self::ArrayEvaluable) = prod(size(self))
 
 # Evaluables of type Coords should also implement ndims, but it's not known in all cases
 Base.ndims(::Evaluable{_Coords}) = "?"
@@ -52,7 +55,7 @@ include("evaluables/compilation.jl")
 
 Base.show(io::IO, self::Evaluable) = print(io, string(typeof(self).name.name), typerepr(self))
 
-typerepr(self::Evaluable{_Array}) = string("<", join(size(self), ","), ">")
+typerepr(self::ArrayEvaluable) = string("<", join(size(self), ","), ">")
 typerepr(self::Evaluable{_Coords}) = let n = ndims(self); "(point=<$n>, grad=<$n,$n>)" end
 typerepr(self::Evaluable{_Element}) = "(Element)"
 typerepr(self::Evaluable{_Transform}) = "(Transform)"

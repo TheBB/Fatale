@@ -83,14 +83,14 @@ global_grad(n) = GetProperty(global_coords(n), :grad)
 # ==============================================================================
 # Outer constructors
 
-Contract(left::Evaluable{_Array}, right::Evaluable{_Array}, lind::Dims, rind::Dims, target::Dims) =
+Contract(left::ArrayEvaluable, right::ArrayEvaluable, lind::Dims, rind::Dims, target::Dims) =
     Contract((left, right), (lind, rind), target)
 
-function Contract(left::Zeros, right::Evaluable{_Array}, lind::Dims, rind::Dims, target::Dims)
+function Contract(left::Zeros, right::ArrayEvaluable, lind::Dims, rind::Dims, target::Dims)
     dims = _sizedict((left, right), (lind, rind))
     newsize = Tuple(dims[i] for i in target)
     newtype = promote_type(eltype(left), eltype(right))
     Zeros(newtype, newsize...)
 end
-Contract(left::Evaluable{_Array}, right::Zeros, lind::Dims, rind::Dims, target::Dims) =
+Contract(left::ArrayEvaluable, right::Zeros, lind::Dims, rind::Dims, target::Dims) =
     Contract(right, left, rind, lind, target)

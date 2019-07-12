@@ -110,9 +110,9 @@ end
 Inflate the dimension number *axis* of *arg* to have size *newsize*,
 using *indices* for placing.
 """
-struct Inflate <: Evaluable{_Array}
-    arg :: Evaluable{_Array}
-    indices :: Evaluable{_Array}
+struct Inflate <: ArrayEvaluable
+    arg :: ArrayEvaluable
+    indices :: ArrayEvaluable
     newsize :: Int
     axis :: Int
 
@@ -141,11 +141,11 @@ Base.size(self::Inflate) = Tuple(
 
 Elementwise sum of arguments.
 """
-struct Add <: Evaluable{_Array}
+struct Add <: ArrayEvaluable
     args :: Vector{Evaluable}
     dims :: Dims
 
-    function Add(args::Tuple{Vararg{Evaluable{_Array}}})
+    function Add(args::VarTuple{ArrayEvaluable})
         length(args) == 1 && return args[1]
         dims = broadcast_shape(map(size, args)...)
         new(collect(Evaluable, args), dims)
@@ -173,12 +173,12 @@ end
 
 Compute a fully unrolled tensor contraction.
 """
-struct Contract <: Evaluable{_Array}
-    args :: Tuple{Vararg{Evaluable{_Array}}}
-    indices :: Tuple{Vararg{Dims}}
+struct Contract <: ArrayEvaluable
+    args :: Vector{Evaluable}
+    indices :: VarTuple{Dims}
     target :: Dims
 
-    function Contract(args::Tuple{Vararg{Evaluable{_Array}}}, indices::Tuple{Vararg{Dims}}, target::Dims)
+    function Contract(args::VarTuple{ArrayEvaluable}, indices::VarTuple{Dims}, target::Dims)
         @assert length(args) == length(indices)
         @assert all(ndims(arg) == length(ind) for (arg, ind) in zip(args, indices))
         @assert all(!(k isa Zeros) for k in args)
@@ -189,7 +189,7 @@ struct Contract <: Evaluable{_Array}
         end
 
         target_size = Tuple(dims[i] for i in target)
-        new(args, indices, target)
+        new(collect(Evaluable, args), indices, target)
     end
 end
 
@@ -240,7 +240,7 @@ _sizedict(args, inds) = OrderedDict(flatten(
 
 An evaluable returning the constant object *v*.
 """
-struct Constant <: Evaluable{_Array}
+struct Constant <: ArrayEvaluable
     value :: SArray
 end
 
@@ -263,9 +263,9 @@ end
 
 An evaluable returning a view into another array.
 """
-struct GetIndex <: Evaluable{_Array}
-    arg :: Evaluable{_Array}
-    index :: Tuple{Vararg{Union{Colon, Int}}}
+struct GetIndex <: ArrayEvaluable
+    arg :: ArrayEvaluable
+    index :: VarTuple{Union{Colon, Int}}
 
     function GetIndex(arg, index::Union{Colon, Int}...)
         @assert length(index) == ndims(arg)
@@ -292,8 +292,8 @@ end
 An evaluable that computes the inverse of the two-dimensional argument
 *arg*.
 """
-struct Inv <: Evaluable{_Array}
-    arg :: Evaluable{_Array}
+struct Inv <: ArrayEvaluable
+    arg :: ArrayEvaluable
 
     function Inv(arg::Evaluable)
         @assert ndims(arg) == 2
@@ -322,8 +322,8 @@ zeros, yielding an array of size
 
     (size(arg)..., padding + degree + 1).
 """
-struct Monomials <: Evaluable{_Array}
-    arg :: Evaluable{_Array}
+struct Monomials <: ArrayEvaluable
+    arg :: ArrayEvaluable
     degree :: Int
     padding :: Int
 end
@@ -361,11 +361,11 @@ end
 
 Elementwise product of arguments.
 """
-struct Multiply <: Evaluable{_Array}
+struct Multiply <: ArrayEvaluable
     args :: Vector{Evaluable}
     dims :: Dims
 
-    function Multiply(args::Tuple{Vararg{Evaluable{_Array}}})
+    function Multiply(args::VarTuple{ArrayEvaluable})
         dims = broadcast_shape(map(size, args)...)
         new(collect(Evaluable, args), dims)
     end
@@ -398,8 +398,8 @@ end
 
 Negate the argument.
 """
-struct Negate <: Evaluable{_Array}
-    arg :: Evaluable{_Array}
+struct Negate <: ArrayEvaluable
+    arg :: ArrayEvaluable
 end
 
 arguments(self::Negate) = Evaluable[self.arg]
@@ -415,8 +415,8 @@ struct __Negate end
 
 Reshape *arg* to a new size.
 """
-struct Reshape <: Evaluable{_Array}
-    arg :: Evaluable{_Array}
+struct Reshape <: ArrayEvaluable
+    arg :: ArrayEvaluable
     shape :: Dims
     Reshape(arg, newsize...) = new(arg, Tuple(newsize))
 end
@@ -453,12 +453,12 @@ end
 
 Collapse some axes by summation.
 """
-struct Sum <: Evaluable{_Array}
-    arg :: Evaluable{_Array}
+struct Sum <: ArrayEvaluable
+    arg :: ArrayEvaluable
     dims :: Dims
     collapse :: Bool
 
-    function Sum(arg::Evaluable{_Array}, dims, collapse::Bool)
+    function Sum(arg::ArrayEvaluable, dims, collapse::Bool)
         if dims isa Colon
             dims = Tuple(1:ndims(arg))
         end
@@ -507,7 +507,7 @@ end
 
 Return a constant zero array of the given size and type.
 """
-struct Zeros <: Evaluable{_Array}
+struct Zeros <: ArrayEvaluable
     dims :: Dims
     eltype :: DataType
     Zeros(eltype::Type, dims::Int...) = new(dims, eltype)
