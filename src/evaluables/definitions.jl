@@ -23,6 +23,7 @@ standard names are defined:
 
 - :loctrans -> the local parameter transformation
 - :globtrans -> the global physical transformation
+- :index -> the element index (an)
 
 You can use others so long as you know that the element type supports
 them, that is, there is a method of Fatale.Elements.elementdata

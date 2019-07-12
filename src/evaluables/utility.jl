@@ -71,6 +71,7 @@ Base.sum(self::Evaluable; dims=:, collapse=false) = Sum(self, dims, collapse)
 
 local_transform() = ElementData{_Transform}(:loctrans)
 global_transform() = ElementData{_Transform}(:globtrans)
+element_index(n) = ElementData{_Array}(:index; size=(n,), eltype=Int)
 
 input_coords() = Argument{_Coords}(:point)
 

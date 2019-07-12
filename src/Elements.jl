@@ -9,7 +9,7 @@ using ..Transforms
 using ..Utils
 
 export ReferenceElement, SimplexReference, TensorReference, quadrule
-export AbstractElement, elementdata, loctrans, globtrans
+export AbstractElement, elementdata, loctrans, globtrans, index
 
 
 """
@@ -82,6 +82,7 @@ names are reserved:
 
 - :loctrans -> the local parameter transformation
 - :globtrans -> the global physical transformation
+- :index -> element index (any type)
 
 Others can be freely used. See Fatale.Evaluables.ElementData.
 """
@@ -90,9 +91,11 @@ elementdata(::AbstractElement, ::Val, args...) = nothing
 # Easier interfaces for the standard names
 @inline elementdata(el::AbstractElement, ::Val{:loctrans}) = loctrans(el)
 @inline elementdata(el::AbstractElement, ::Val{:globtrans}) = globtrans(el)
+@inline elementdata(el::AbstractElement, ::Val{:index}) = index(el)
 
 @inline loctrans(::AbstractElement{D}) where D = Empty{D,Float64}()
 @inline globtrans(::AbstractElement) = nothing
+@inline index(::AbstractElement) = nothing
 
 
 end # module
