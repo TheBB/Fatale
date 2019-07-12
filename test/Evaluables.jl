@@ -247,6 +247,33 @@ end
 end
 
 
+@testset "Sum" begin
+    Random.seed!(201907120933)
+    arr = @SArray rand(2,2,2)
+
+    func = optimize(Sum(Constant(arr), (1,)))
+    @test func(nothing, nothing) == sum(arr; dims=1)
+
+    @noallocs begin
+        @bench $func(nothing, nothing)
+    end
+
+    func = optimize(Sum(Constant(arr), (1,2)))
+    @test func(nothing, nothing) == sum(Array(arr); dims=(1,2))
+
+    @noallocs begin
+        @bench $func(nothing, nothing)
+    end
+
+    func = optimize(Sum(Constant(arr), (1,2); collapse=true))
+    @test func(nothing, nothing) == dropdims(sum(Array(arr); dims=(1,2)); dims=(1,2))
+
+    @noallocs begin
+        @bench $func(nothing, nothing)
+    end
+end
+
+
 @testset "Zeros" begin
     Random.seed!(201906191751)
     func = optimize(Zeros(Float64, 3, 5, 7))

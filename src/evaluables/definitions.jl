@@ -401,6 +401,57 @@ end
 
 
 """
+    Sum(arg, dims...)
+
+Collapse some axes by summation.
+"""
+struct Sum <: Evaluable{_Array}
+    arg :: Evaluable{_Array}
+    dims :: Dims
+    collapse :: Bool
+
+    function Sum(arg::Evaluable{_Array}, dims::Dims; collapse::Bool=false)
+        @assert all(1 <= d <= ndims(arg) for d in dims)
+        @assert length(Set(dims)) == length(dims)
+        new(arg, dims, collapse)
+    end
+end
+
+arguments(self::Sum) = Evaluable[self.arg]
+function Base.size(self::Sum)
+    if self.collapse
+        Tuple(k for (i, k) in enumerate(size(self.arg)) if !(i in self.dims))
+    else
+        Tuple(i in self.dims ? 1 : k for (i, k) in enumerate(size(self.arg)))
+    end
+end
+
+codegen(self::Sum) = __Sum(self.dims, size(self))
+struct __Sum{D,S}
+    __Sum(D,S) = new{D,S}()
+end
+@generated function (self::__Sum{D,S})(_, arg) where {D,S}
+    D = collect(D)
+    tempsize = Tuple(i in D ? 1 : k for (i, k) in enumerate(size(arg)))
+
+    # We'd like to just call the StaticArrays implementation, but it
+    # can cause allocations
+    sums = Expr[]
+    for i in Base.product((1:k for k in tempsize)...)
+        ix = collect(i)
+        exprs = Expr[]
+        for px in Base.product((1:size(arg, d) for d in D)...)
+            ix[D] = collect(px)
+            push!(exprs, :(arg[$(ix...)]))
+        end
+        push!(sums, :(+($(exprs...))))
+    end
+
+    :(@inbounds SArray{Tuple{$(S...)}}($(sums...)))
+end
+
+
+"""
     Zeros(T=Float64, dims...)
 
 Return a constant zero array of the given size and type.
