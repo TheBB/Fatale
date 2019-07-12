@@ -25,6 +25,9 @@ end
 # Methods to other functions
 
 function Base.:*(left::Evaluable, right::Evaluable)
+    if ndims(left) == 0 || ndims(right) == 0
+        return Multiply(left, right)
+    end
     linds = Tuple(1:ndims(left))
     rinds = Tuple(ndims(left) - 1 .+ (1:ndims(right)))
     tinds = Tuple(flatten((linds[1:end-1], rinds[2:end])))
