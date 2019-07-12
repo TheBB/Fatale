@@ -251,26 +251,29 @@ end
     Random.seed!(201907120933)
     arr = @SArray rand(2,2,2)
 
-    func = optimize(Sum(Constant(arr), (1,)))
-    @test func(nothing, nothing) == sum(arr; dims=1)
+    func = optimize(sum(Constant(arr); dims=(1,)))
+    @test func(nothing, nothing) ≈ sum(arr; dims=1)
 
     @noallocs begin
         @bench $func(nothing, nothing)
     end
 
-    func = optimize(Sum(Constant(arr), (1,2)))
-    @test func(nothing, nothing) == sum(Array(arr); dims=(1,2))
+    func = optimize(sum(Constant(arr); dims=(1,2)))
+    @test func(nothing, nothing) ≈ sum(Array(arr); dims=(1,2))
 
     @noallocs begin
         @bench $func(nothing, nothing)
     end
 
-    func = optimize(Sum(Constant(arr), (1,2); collapse=true))
-    @test func(nothing, nothing) == dropdims(sum(Array(arr); dims=(1,2)); dims=(1,2))
+    func = optimize(sum(Constant(arr); dims=(1,2), collapse=true))
+    @test func(nothing, nothing) ≈ dropdims(sum(Array(arr); dims=(1,2)); dims=(1,2))
 
     @noallocs begin
         @bench $func(nothing, nothing)
     end
+
+    func = optimize(sum(Constant(arr); collapse=true))
+    @test func(nothing, nothing) ≈ Scalar(sum(arr))
 end
 
 

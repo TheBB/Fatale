@@ -410,7 +410,10 @@ struct Sum <: Evaluable{_Array}
     dims :: Dims
     collapse :: Bool
 
-    function Sum(arg::Evaluable{_Array}, dims::Dims; collapse::Bool=false)
+    function Sum(arg::Evaluable{_Array}, dims, collapse::Bool)
+        if dims isa Colon
+            dims = Tuple(1:ndims(arg))
+        end
         @assert all(1 <= d <= ndims(arg) for d in dims)
         @assert length(Set(dims)) == length(dims)
         new(arg, dims, collapse)

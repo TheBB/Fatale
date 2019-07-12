@@ -44,6 +44,8 @@ Base.reshape(self::Evaluable, args...) = Reshape(self, args...)
 Base.reshape(self::Reshape, args...) = reshape(self.arg, args...)
 Base.reshape(self::Constant, args...) = Constant(reshape(self.value, args...))
 
+Base.sum(self::Evaluable; dims=:, collapse=false) = Sum(self, dims, collapse)
+
 
 # ==============================================================================
 # Convenience constructors
