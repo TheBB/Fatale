@@ -142,15 +142,18 @@ Base.size(self::Inflate) = Tuple(
 Elementwise sum of arguments.
 """
 struct Add <: Evaluable{_Array}
-    args :: Vector{Evaluable{_Array}}
+    args :: Vector{Evaluable}
     dims :: Dims
 
-    function Add(args...)
+    function Add(args::Tuple{Vararg{Evaluable{_Array}}})
         length(args) == 1 && return args[1]
         dims = broadcast_shape(map(size, args)...)
         new(collect(Evaluable, args), dims)
     end
 end
+
+Add(self::Evaluable) = self
+Add(left::Evaluable, right::Evaluable) = Add((left, right))
 
 arguments(self::Add) = self.args
 Base.size(self::Add) = self.dims
@@ -358,14 +361,17 @@ end
 Elementwise product of arguments.
 """
 struct Multiply <: Evaluable{_Array}
-    args :: Vector{Evaluable{_Array}}
+    args :: Vector{Evaluable}
     dims :: Dims
 
-    function Multiply(args...)
+    function Multiply(args::Tuple{Vararg{Evaluable{_Array}}})
         dims = broadcast_shape(map(size, args)...)
         new(collect(Evaluable, args), dims)
     end
 end
+
+Multiply(self::Evaluable) = self
+Multiply(left::Evaluable, right::Evaluable) = Multiply((left, right))
 
 arguments(self::Multiply) = self.args
 Base.size(self::Multiply) = self.dims

@@ -32,9 +32,13 @@ function Base.:*(left::Evaluable, right::Evaluable)
 end
 
 Base.:-(self::Evaluable) = Negate(self)
+Base.:-(left::Evaluable, right) = left + (-right)
+Base.:+(left::Evaluable, right::Evaluable) = Add(left, right)
+Base.:+(left::Evaluable, right::Union{Real,AbstractArray}) = Add(left, Constant(right))
+Base.:+(left::Union{Real,AbstractArray}, right::Evaluable) = Add(Constant(left), right)
 
-Base.broadcasted(::typeof(+), args::Evaluable...) = Add(args...)
-Base.broadcasted(::typeof(*), args::Evaluable...) = Multiply(args...)
+Base.broadcasted(::typeof(+), args::Evaluable...) = reduce(Add, args)
+Base.broadcasted(::typeof(*), args::Evaluable...) = reduce(Multiply, args)
 
 Base.getindex(self::Evaluable, index...) = GetIndex(self, index...)
 

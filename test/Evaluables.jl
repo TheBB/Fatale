@@ -58,7 +58,7 @@ end
     arr2 = @SArray rand(2,2)
     arr3 = @SArray rand(2,1,3)
 
-    func = Add(Constant(arr1), Constant(arr2), Constant(arr3))
+    func = .+(Constant(arr1), Constant(arr2), Constant(arr3))
     @test size(func) == (2, 2, 3)
     func = optimize(func)
 
@@ -203,7 +203,7 @@ end
     arr2 = @SArray rand(2,2)
     arr3 = @SArray rand(2,1,3)
 
-    func = Multiply(Constant(arr1), Constant(arr2), Constant(arr3))
+    func = .*(Constant(arr1), Constant(arr2), Constant(arr3))
     @test size(func) == (2, 2, 3)
     func = optimize(func)
 
