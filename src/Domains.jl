@@ -7,7 +7,7 @@ using ..Elements
 using ..Evaluables
 
 export Lagrange
-export local_basis
+export global_basis, local_basis, doflist
 export TensorDomain
 
 
@@ -53,6 +53,27 @@ function local_basis(self::TensorDomain{D}, ::Type{Lagrange}, degree) where D
     factors = [insertaxis(basis1d[i,:]; left=i-1) for i in 1:D]
     outer = .*(factors...)
     reshape(outer, :)
+end
+
+function doflist(self::TensorDomain{D}, ::Type{Lagrange}, degree) where D
+    strides = cumprod(collect(Int, size(self)) * degree .+ 1)
+    strides = [1, strides[1:end-1]...]
+    rootindex = sum(element_index(D) .* Constant(degree * strides); collapse=true)
+
+    offsets = 0 : degree
+    for s in strides[2:end]
+        offsets = (offsets .+ s * reshape(0:degree, 1, :))[:]
+    end
+
+    list = rootindex + (offsets .+ 1 .- sum(degree * strides))
+    max = prod(size(self) .* degree .+ 1)
+    (list, max)
+end
+
+function global_basis(args...)
+    loc = local_basis(args...)
+    (indices, maxindex) = doflist(args...)
+    Inflate(loc, indices, maxindex)
 end
 
 
