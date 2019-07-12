@@ -244,6 +244,7 @@ struct Constant <: Evaluable{_Array}
     value :: SArray
 end
 
+Constant(value::Real) = Constant(Scalar(value))
 Constant(value::AbstractArray) = Constant(SArray{Tuple{size(value)...}}(value))
 
 Base.eltype(self::Constant) = eltype(self.value)
