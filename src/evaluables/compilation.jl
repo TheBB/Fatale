@@ -19,7 +19,33 @@ end
 
 struct OptimizedEvaluable{I, K}
     funcs :: K
-    OptimizedEvaluable{I}(funcs) where I = new{I,typeof(funcs)}(funcs)
+
+    function OptimizedEvaluable(func)
+        sequence = linearize(func)
+        callables = Tuple(codegen(stage.func) for stage in sequence)
+        inds = Tuple{(Tuple{stage.arginds...} for stage in sequence)...}
+        new{inds, typeof(callables)}(callables)
+    end
+end
+
+struct OptimizedBlockEvaluable{I, D}
+    indices :: I
+    data :: D
+
+    function OptimizedBlockEvaluable(block)
+        indices = Tuple(OptimizedEvaluable(ind) for ind in block.indices)
+        data = OptimizedEvaluable(block.data)
+        new{typeof(indices), typeof(data)}(indices, data)
+    end
+end
+
+struct OptimizedSparseEvaluable{K}
+    blocks :: K
+
+    function OptimizedSparseEvaluable(blocks)
+        arg = Tuple(OptimizedBlockEvaluable(block) for block in blocks)
+        new{typeof(arg)}(arg)
+    end
 end
 
 """
@@ -28,11 +54,20 @@ end
 Create an optimized and directly callable object from an evaluable.
 """
 function optimize(self::Evaluable)
-    sequence = linearize(self)
-    callables = Tuple(codegen(stage.func) for stage in sequence)
-    inds = Tuple{(Tuple{stage.arginds...} for stage in sequence)...}
-    OptimizedEvaluable{inds}(callables)
+    blks = collect(Any, blocks(self))
+    if length(blks) == 1 && _istrivial(blks[1]) && size(blks[1].data) == size(self)
+        OptimizedEvaluable(self)
+    else
+        OptimizedSparseEvaluable(blks)
+    end
 end
+
+function _istrivial(self)
+    all(enumerate(self.indices)) do (i, ind)
+        ind isa Constant && ind.value == 1:size(self.data, i)
+    end
+end
+
 
 """
     (::OptimizedEvaluable)(element, quadpt)

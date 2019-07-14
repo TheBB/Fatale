@@ -51,10 +51,13 @@ Base.ndims(::Evaluable{_Coords}) = "?"
     blocks(::ArrayEvaluable)
 
 Decompose an array evaluable into sparse blocks. Returns an iterator
-of type ((indices...), data), with evaluables producing IJV-format
-array elements.
+of type (indices=(...), data=...), with evaluables producing
+IJV-format array elements.
 """
-blocks(self::ArrayEvaluable) = [(Tuple(Constant(1:s) for s in size(self)), self)]
+blocks(self::ArrayEvaluable) = [(
+    indices = Tuple(Constant(1:s) for s in size(self)),
+    data = self,
+)]
 
 
 include("evaluables/definitions.jl")
