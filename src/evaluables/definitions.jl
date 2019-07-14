@@ -136,6 +136,11 @@ Base.size(self::Inflate) = Tuple(
     for i in 1:ndims(self.arg)
 )
 
+blocks(self::Inflate) = (
+    ((inds[1:self.axis-1]..., self.indices, inds[self.axis+1:end]...), data)
+    for (inds, data) in blocks(self.arg)
+)
+
 
 """
     Add(args...)

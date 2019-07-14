@@ -12,7 +12,7 @@ using ..Elements
 using ..Transforms
 
 export evalorder
-export optimize
+export optimize, blocks
 export local_point, local_grad, global_point, global_grad, grad, insertaxis, element_index
 export Contract, Constant, Inflate, Monomials, Zeros
 
@@ -45,6 +45,16 @@ Base.length(self::ArrayEvaluable) = prod(size(self))
 
 # Evaluables of type Coords should also implement ndims, but it's not known in all cases
 Base.ndims(::Evaluable{_Coords}) = "?"
+
+
+"""
+    blocks(::ArrayEvaluable)
+
+Decompose an array evaluable into sparse blocks. Returns an iterator
+of type ((indices...), data), with evaluables producing IJV-format
+array elements.
+"""
+blocks(self::ArrayEvaluable) = [(Tuple(Constant(1:s) for s in size(self)), self)]
 
 
 include("evaluables/definitions.jl")
