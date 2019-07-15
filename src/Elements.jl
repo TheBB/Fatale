@@ -66,7 +66,7 @@ quadrule(self::TensorReference{D}, npts::Int) where D = quadrule(self, ntuple(_-
 
 function quadrule(self::TensorReference{D}, npts::NTuple{D, Int}) where D
     (pts, wts) = zip((quadrule(term, n) for (term, n) in zip(self.terms, npts))...)
-    rwts = vec(outer(wts...))
+    rwts = outer(wts...)
     rpts = (SVector(vcat(p...)) for p in product(pts...))
     (collect(SVector{D, Float64}, rpts), rwts)
 end
