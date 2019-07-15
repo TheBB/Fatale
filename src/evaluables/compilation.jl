@@ -53,7 +53,7 @@ end
 
 Create an optimized and directly callable object from an evaluable.
 """
-function optimize(self::Evaluable)
+function optimize(self::ArrayEvaluable)
     blks = collect(Any, blocks(self))
     if length(blks) == 1 && _istrivial(blks[1]) && size(blks[1].data) == size(self)
         OptimizedEvaluable(self)
