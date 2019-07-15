@@ -23,7 +23,7 @@ struct OptimizedEvaluable{I, K}
     function OptimizedEvaluable(func)
         sequence = linearize(func)
         callables = Tuple(codegen(stage.func) for stage in sequence)
-        inds = Tuple{(Tuple{stage.arginds...} for stage in sequence)...}
+        inds = Tuple(Tuple(stage.arginds) for stage in sequence)
         new{inds, typeof(callables)}(callables)
     end
 end
@@ -77,7 +77,7 @@ Evaluate the optimized evaluable in an evaluation point.
 @generated function (self::OptimizedEvaluable{Ind,K})(element, quadpt) where {Ind,K}
     nfuncs = length(K.parameters)
     syms = [gensym() for _ in 1:nfuncs]
-    argsyms = [[syms[j] for j in tp.parameters] for tp in Ind.parameters]
+    argsyms = [[syms[j] for j in tp] for tp in Ind]
 
     codes = Expr[]
     if quadpt == Nothing
