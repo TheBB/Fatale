@@ -7,11 +7,14 @@ using ..Elements
 using ..Evaluables
 
 export Lagrange
+export quadrule
 export global_basis, local_basis, doflist
 export TensorDomain
 
 
-abstract type Domain{Elt,Ref,N} <: AbstractArray{Elt,N} end
+abstract type Domain{Elt,N} <: AbstractArray{Elt,N} end
+
+quadrule(::Domain{Elt}, args...) where Elt = Elements.quadrule(reference(Elt), args...)
 
 
 # Basis types
@@ -28,9 +31,10 @@ end
 
 @inline Elements.globtrans(self::TensorElement{D}) where D = Shift(SVector{D,Float64}(self.index) - 1.0)
 @inline Elements.index(self::TensorElement) = SVector(self.index)
+Elements.reference(::Type{TensorElement{D}}) where D = TensorReference(SimplexReference{1}(), D)
 
 
-struct TensorDomain{D} <: Domain{TensorElement{D}, TensorReference{NTuple{D,SimplexReference{1}}}, D}
+struct TensorDomain{D} <: Domain{TensorElement{D}, D}
     size :: NTuple{D, Int}
     TensorDomain(shape::Int...) = new{length(shape)}(shape)
 end

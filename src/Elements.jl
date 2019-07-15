@@ -8,8 +8,8 @@ using StaticArrays
 using ..Transforms
 using ..Utils
 
-export ReferenceElement, SimplexReference, TensorReference, quadrule
-export AbstractElement, elementdata, loctrans, globtrans, index
+export ReferenceElement, SimplexReference, TensorReference
+export AbstractElement, reference, elementdata, loctrans, globtrans, index
 
 
 """
@@ -58,6 +58,10 @@ end
     :(TensorReference{$dims, $K}(terms))
 end
 
+function TensorReference(term::ReferenceElement, n::Int)
+    TensorReference{n, NTuple{n, typeof(term)}}(ntuple(_->term, n))
+end
+
 quadrule(self::TensorReference{D}, npts::Int) where D = quadrule(self, ntuple(_->npts, D))
 
 function quadrule(self::TensorReference{D}, npts::NTuple{D, Int}) where D
@@ -72,6 +76,13 @@ abstract type AbstractElement{D} end
 
 Base.ndims(::Type{<:AbstractElement{D}}) where D = D
 Base.ndims(::AbstractElement{D}) where D = D
+
+"""
+    reference(::Type{<:AbstractElement})
+
+Obtain a reference element for a given element type.
+"""
+reference(::Type{<:AbstractElement}) = nothing
 
 
 """
