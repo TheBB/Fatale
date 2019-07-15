@@ -17,16 +17,22 @@ function _linearize!(data, self::Evaluable)
 end
 
 
-struct OptimizedEvaluable{I, K}
+struct OptimizedEvaluable{I, K, S, T}
     funcs :: K
 
     function OptimizedEvaluable(func)
         sequence = linearize(func)
         callables = Tuple(codegen(stage.func) for stage in sequence)
         inds = Tuple(Tuple(stage.arginds) for stage in sequence)
-        new{inds, typeof(callables)}(callables)
+        new{inds, typeof(callables), size(func), eltype(func)}(callables)
     end
 end
+
+Base.eltype(self::OptimizedEvaluable{I,K,S,T}) where {I,K,S,T} = T
+Base.length(self::OptimizedEvaluable) = prod(size(self))
+Base.ndims(self::OptimizedEvaluable) = length(size(self))
+Base.size(self::OptimizedEvaluable{I,K,S}) where {I,K,S} = S
+
 
 struct OptimizedBlockEvaluable{I, D}
     indices :: I
@@ -39,14 +45,26 @@ struct OptimizedBlockEvaluable{I, D}
     end
 end
 
-struct OptimizedSparseEvaluable{K}
+Base.eltype(self::OptimizedBlockEvaluable) = eltype(self.data)
+Base.length(self::OptimizedBlockEvaluable) = length(self.data)
+Base.ndims(self::OptimizedBlockEvaluable) = ndims(self.data)
+Base.size(self::OptimizedBlockEvaluable) = size(self.data)
+
+
+struct OptimizedSparseEvaluable{K, S, T}
     blocks :: K
 
-    function OptimizedSparseEvaluable(blocks)
+    function OptimizedSparseEvaluable(blocks, func)
         arg = Tuple(OptimizedBlockEvaluable(block) for block in blocks)
-        new{typeof(arg)}(arg)
+        new{typeof(arg), size(func), eltype(func)}(arg)
     end
 end
+
+Base.eltype(self::OptimizedSparseEvaluable{K,S,T}) where {K,S,T} = T
+Base.length(self::OptimizedSparseEvaluable) = sum(length, self.blocks)
+Base.ndims(self::OptimizedSparseEvaluable) = length(size(self))
+Base.size(self::OptimizedSparseEvaluable{K,S}) where {K,S} = S
+
 
 """
     optimize(::Evaluable)
@@ -58,7 +76,7 @@ function optimize(self::ArrayEvaluable)
     if length(blks) == 1 && _istrivial(blks[1]) && size(blks[1].data) == size(self)
         OptimizedEvaluable(self)
     else
-        OptimizedSparseEvaluable(blks)
+        OptimizedSparseEvaluable(blks, self)
     end
 end
 
