@@ -1,7 +1,6 @@
 module Integrate
 
 import ..Evaluables: OptimizedEvaluable, OptimizedBlockEvaluable, OptimizedSparseEvaluable
-import ..Domains: Domain
 
 import Strided: UnsafeStridedView, sreshape
 import SparseArrays: sparse
@@ -9,7 +8,7 @@ import SparseArrays: sparse
 export integrate, to
 
 
-function integrate(func::OptimizedEvaluable, domain::Domain, quadrule)
+function integrate(func::OptimizedEvaluable, domain, quadrule)
     data = zeros(eltype(func), size(func))
     (pts, wts) = quadrule
     for element in domain
@@ -21,7 +20,7 @@ function integrate(func::OptimizedEvaluable, domain::Domain, quadrule)
 end
 
 
-function integrate(func::OptimizedSparseEvaluable, domain::Domain, quadrule)
+function integrate(func::OptimizedSparseEvaluable, domain, quadrule)
     @assert ndims(func) == 2
     nelems = length(domain)
     nentries = length(func)
@@ -46,7 +45,7 @@ function integrate(func::OptimizedSparseEvaluable, domain::Domain, quadrule)
 end
 
 
-function _integrate(block::OptimizedBlockEvaluable, domain::Domain, quadrule, I, J, V)
+function _integrate(block::OptimizedBlockEvaluable, domain, quadrule, I, J, V)
     (pts, wts) = quadrule
     for (i, element) in enumerate(domain)
         I[:,:,i] .= block.indices[1](element, nothing)

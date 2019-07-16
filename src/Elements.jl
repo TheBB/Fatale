@@ -9,7 +9,8 @@ using ..Transforms
 using ..Utils
 
 export ReferenceElement, SimplexReference, TensorReference
-export AbstractElement, reference, elementdata, loctrans, globtrans, index
+export AbstractElement, AbstractSubElement, SubElement
+export reference, elementdata, loctrans, globtrans, index
 
 
 """
@@ -107,6 +108,26 @@ elementdata(::AbstractElement, ::Val, args...) = nothing
 @inline loctrans(::AbstractElement{D}) where D = Empty{D,Float64}()
 @inline globtrans(::AbstractElement) = nothing
 @inline index(::AbstractElement) = nothing
+
+
+abstract type AbstractSubElement{D,P} <: AbstractElement{D} end
+
+reference(::Type{<:AbstractSubElement{D,P}}) where {D,P} = reference(P)
+parent(::AbstractSubElement) = nothing
+
+@inline loctrans(self::AbstractSubElement) = Chain(subtrans(self), loctrans(parent(self)))
+@inline globtrans(self::AbstractSubElement) = globtrans(parent(self))
+@inline index(self::AbstractSubElement) = index(parent(self))
+
+
+struct SubElement{D,T,P} <: AbstractSubElement{D,P}
+    transform :: T
+    parent :: P
+    SubElement(trf::T, parent::P) where {T, D, P<:AbstractElement{D}} = new{D-1,T,P}(trf, parent)
+end
+
+@inline parent(self::SubElement) = self.parent
+@inline subtrans(self::SubElement) = self.transform
 
 
 end # module
