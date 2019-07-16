@@ -5,6 +5,7 @@ using StaticArrays
 using ..Transforms
 using ..Elements
 using ..Evaluables
+using ..Utils
 
 export Lagrange
 export quadrule
@@ -54,9 +55,8 @@ function local_basis(self::TensorDomain{D}, ::Type{Lagrange}, degree) where D
     basis1d = poly * Constant(coeffs)
 
     # Reshape and form an outer product
-    factors = [insertaxis(basis1d[i,:]; left=i-1) for i in 1:D]
-    outer = .*(factors...)
-    reshape(outer, :)
+    factors = (insertaxis(basis1d[i,:]; left=i-1) for i in 1:D)
+    return reshape(outer(factors...), :)
 end
 
 function doflist(self::TensorDomain{D}, ::Type{Lagrange}, degree) where D
