@@ -38,6 +38,7 @@ struct Chain{K<:Tuple{Vararg{AbstractTransform}}, From, To, R} <: AbstractTransf
 end
 
 @generated function Chain(transforms...)
+    length(transforms) == 1 && return :(transforms[1])
     from = fromdims(transforms[1])
     to = todims(transforms[end])
     R = eltype(transforms[1])
