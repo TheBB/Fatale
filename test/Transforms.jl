@@ -1,7 +1,7 @@
 @testset "Chain" begin
     Random.seed!(201906131608)
 
-    trf = Chain(Updim{1,2}(1.0), Shift(SVector(4.0, 5.0)), Empty(2))
+    trf = Empty(2) ∘ Shift(SVector(4.0, 5.0)) ∘ Updim{1,2}(1.0)
     initial = @SVector rand(1)
     @test trf(initial) == [5.0, initial[1] + 5.0]
 
@@ -14,7 +14,7 @@
         initial = @SVector rand(1)
         grad = SMatrix{1,1,Float64}(I)
         @bench begin
-            trf = Chain(Updim{1,2}(1.0), Shift(SVector(4.0, 5.0)), Empty(2))
+            trf = Empty(2) ∘ Shift(SVector(4.0, 5.0)) ∘ Updim{1,2}(1.0)
             trf($initial)
             trf($initial, $grad)
         end

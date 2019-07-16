@@ -28,6 +28,6 @@
     @test reference(eltype(bnd)) == TensorReference(SimplexReference{1}(), 1)
     @test size(bnd) == (3,)
     @test index(bnd[2]) == [2, 1, 7]
-    @test loctrans(bnd[1]) == Chain(Updim{2,2}(0.0), Updim{3,3}(1.0))
+    @test loctrans(bnd[1]) == Updim{3,3}(1.0) ∘ Updim{2,2}(0.0)
     @test globtrans(bnd[3]) == Shift(SVector(2.0, 0.0, 6.0))
 end

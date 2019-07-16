@@ -29,7 +29,7 @@ struct SubElement{D, T, P} <: AbstractElement{D}
 end
 
 SubElement(trf, parent) = SubElement{fromdims(trf), typeof(trf), typeof(parent)}(trf, parent)
-@inline Elements.loctrans(self::SubElement) = Chain(self.transform, loctrans(self.parent))
+@inline Elements.loctrans(self::SubElement) = loctrans(self.parent) ∘ self.transform
 @inline Elements.globtrans(self::SubElement) = globtrans(self.parent)
 
 

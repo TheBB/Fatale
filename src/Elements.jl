@@ -163,7 +163,7 @@ Return the parent element of a given sub-element.
 """
 parent(::AbstractSubElement) = throw("not implemented")
 
-@inline loctrans(self::AbstractSubElement) = Chain(subtrans(self), loctrans(parent(self)))
+@inline loctrans(self::AbstractSubElement) = loctrans(parent(self)) ∘ subtrans(self)
 @inline globtrans(self::AbstractSubElement) = globtrans(parent(self))
 @inline index(self::AbstractSubElement) = index(parent(self))
 

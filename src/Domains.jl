@@ -89,16 +89,14 @@ end
 end
 
 function boundary_trf(self::TensorDomain{D}, I) where D
-    trfs = Updim[]
-
+    trf = Empty(D)
     d = D
     for (i, ix) in reverse(collect(enumerate(I)))
         ix isa Colon && continue
-        push!(trfs, Updim{i,d}(ix == 1 ? 0.0 : 1.0))
+        trf = trf ∘ Updim{i,d}(ix == 1 ? 0.0 : 1.0)
         d -= 1
     end
-
-    trf = Chain(reverse(trfs)...)
+    trf
 end
 
 
