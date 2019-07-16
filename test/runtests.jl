@@ -57,6 +57,10 @@ end
     include("Elements.jl")
 end
 
+@testset "Domains" begin
+    include("Domains.jl")
+end
+
 @testset "Evaluables" begin
     include("Evaluables.jl")
 end

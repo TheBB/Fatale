@@ -112,7 +112,6 @@ elementdata(::AbstractElement, ::Val, args...) = nothing
 
 abstract type AbstractSubElement{D,P} <: AbstractElement{D} end
 
-reference(::Type{<:AbstractSubElement{D,P}}) where {D,P} = reference(P)
 parent(::AbstractSubElement) = nothing
 
 @inline loctrans(self::AbstractSubElement) = Chain(subtrans(self), loctrans(parent(self)))

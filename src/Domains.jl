@@ -48,14 +48,14 @@ struct BoundaryView{P,T,E,N} <: AbstractArray{E,N}
     transform :: T
 
     function BoundaryView(parent::P, transform::T) where {E,N,P<:AbstractArray{E,N},T}
-        eltype = SubElement{ndims(E)-1, T, E}
+        eltype = SubElement{fromdims(T), T, E}
         new{P,T,eltype,N}(parent, transform)
     end
 end
 
 Base.IndexStyle(::Type{<:BoundaryView{P}}) where P = IndexStyle(P)
 @inline Base.size(self::BoundaryView) = size(self.parent)
-@inline Base.getindex(self::BoundaryView, I) = SubElement(self.transform, self.parent[I])
+@inline Base.getindex(self::BoundaryView, I...) = SubElement(self.transform, self.parent[I...])
 
 
 # Basis types
@@ -73,6 +73,7 @@ end
 @inline Elements.globtrans(self::TensorElement{D}) where D = Shift(SVector{D,Float64}(self.index) - 1.0)
 @inline Elements.index(self::TensorElement) = SVector(self.index)
 Elements.reference(::Type{TensorElement{D}}) where D = TensorReference(SimplexReference{1}(), D)
+Elements.reference(::Type{<:SubElement{D,T,<:TensorElement}}) where {D,T} = TensorReference(SimplexReference{1}(), D)
 
 
 struct TensorDomain{D} <: AbstractArray{TensorElement{D}, D}
