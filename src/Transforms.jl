@@ -38,15 +38,30 @@ struct Chain{K<:Tuple{Vararg{AbstractTransform}}, From, To, R} <: AbstractTransf
 end
 
 @generated function Chain(transforms...)
-    length(transforms) == 1 && return :(transforms[1])
     from = fromdims(transforms[1])
     to = todims(transforms[end])
     R = eltype(transforms[1])
     @assert all(R == eltype(trf) for trf in transforms)
     @assert all(todims(prev) == fromdims(next) for (prev, next) in chain(transforms))
+
+    entries = Expr[]
+    for (i, trf) in enumerate(transforms)
+        trf <: Empty && continue
+        if trf <: Chain
+            for j in 1:length(trf.parameters[1].parameters)
+                push!(entries, :(transforms[$i].chain[$j]))
+            end
+        else
+            push!(entries, :(transforms[$i]))
+        end
+    end
+
+    length(entries) == 0 && return :(Empty{$to, $R}())
+    length(entries) == 1 && return entries[1]
     quote
         @_inline_meta
-        Chain{Tuple{$(transforms...)}, $from, $to, $R}(transforms)
+        tupl = tuple($(entries...))
+        Chain{typeof(tupl), $from, $to, $R}(tupl)
     end
 end
 
