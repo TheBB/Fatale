@@ -14,16 +14,58 @@ export global_basis, local_basis, doflist
 export TensorDomain
 
 
-quadrule(::AbstractArray{E}, args...) where E = Elements.quadrule(reference(E), args...)
+# A domain is nothing but an AbstractArray whose eltype is a subtype
+# of AbstractElement.
+
+
+# Basis types
+
+abstract type Basis end
+struct Lagrange <: Basis end
+
+
+"""
+    reference(::Domain)
+
+Return the reference element for this domain.
+"""
+reference(::AbstractArray{E}) where E = Elements.reference(E)
+
+
+"""
+    quadrule(::Domain, args...)
+
+Generate a quadrature rule suitable for elements of the domain.
+"""
+quadrule(self, args...) where E = Elements.quadrule(reference(self), args...)
 
 
 # Standard boundary interface
 
+"""
+    Boundary(::Domain)
+
+A dummy object suitable for obtaining domain boundaries. A *Boundary*
+object should be indexed using only Colon, 1 and end. For example,
+
+To obtain the left edge of a two-dimensional domain:
+
+    Boundary(domain)[1, :]
+
+To obtain the top face of a three-dimensional domain:
+
+    Boundary(domain)[:, :, end]
+
+Boundary objects should not be used for any other purpose, even though
+they will type check as actual domains.
+"""
 struct Boundary{Elt,N} <: AbstractArray{Elt,N}
     domain :: AbstractArray{Elt,N}
 end
 
+# Add one because we're not counting elements but 'meshlines'
 Base.size(self::Boundary) = map(x->x+1, size(self.domain))
+
 @inline Base.IndexStyle(::Type{Boundary}) = IndexCartesian()
 function Base.getindex(self::Boundary, I::Vararg{Union{Int,Colon}})
     @assert all(zip(I, size(self))) do ((ix, sz))
@@ -33,6 +75,18 @@ function Base.getindex(self::Boundary, I::Vararg{Union{Int,Colon}})
     boundary(self.domain, I)
 end
 
+"""
+    boundary(domain, I::Tuple{Vararg{Union{Int,Colon}}})
+
+Create a boundary for *domain* based on the given index. Specific
+domains may override this function, but users should create boundaries
+using the *Boundary* dummy object.
+
+The default implementation creates a *BoundaryView* object with a
+fixed transform, obtained by calling
+
+    boundary_trf(domain, I)
+"""
 function boundary(domain, I)
     all(ix isa Colon for ix in I) && return domain
     trf = boundary_trf(domain, I)
@@ -43,6 +97,13 @@ function boundary(domain, I)
     BoundaryView(view(domain, I...), trf)
 end
 
+"""
+    BoundaryView(parent, transform)
+
+A BoundaryView functions as a domain whose elements are sub-elements
+of those of *parent*. The given transform is composed with the local
+transform of the parent elements.
+"""
 struct BoundaryView{P,T,E,N} <: AbstractArray{E,N}
     parent :: P
     transform :: T
@@ -58,14 +119,11 @@ Base.IndexStyle(::Type{<:BoundaryView{P}}) where P = IndexStyle(P)
 @inline Base.getindex(self::BoundaryView, I...) = SubElement(self.transform, self.parent[I...])
 
 
-# Basis types
+"""
+    TensorElement{D}(index...)
 
-abstract type Basis end
-struct Lagrange <: Basis end
-
-
-# Tensor domains
-
+A standard D-dimensional tensorial element with integer indices.
+"""
 struct TensorElement{D} <: AbstractElement{D}
     index :: NTuple{D, Int}
 end
@@ -76,6 +134,12 @@ Elements.reference(::Type{TensorElement{D}}) where D = TensorReference(SimplexRe
 Elements.reference(::Type{<:SubElement{D,T,<:TensorElement}}) where {D,T} = TensorReference(SimplexReference{1}(), D)
 
 
+"""
+    TensorDomain(shape...)
+
+Construct a tensorial domain with a given shape. Its elements are of
+type TensorElement.
+"""
 struct TensorDomain{D} <: AbstractArray{TensorElement{D}, D}
     size :: NTuple{D, Int}
     TensorDomain(shape::Int...) = new{length(shape)}(shape)
@@ -88,6 +152,8 @@ end
     TensorElement(I)
 end
 
+# A boundary transform on a tensor domain is a composition of Updim
+# transforms
 function boundary_trf(self::TensorDomain{D}, I) where D
     trf = Empty(D)
     d = D
@@ -100,8 +166,12 @@ function boundary_trf(self::TensorDomain{D}, I) where D
 end
 
 
-# Bases
+"""
+    local_basis(::TensorDomain, Lagrange, degree::Int)
 
+Create an evaluable computing the shape functions for a Lagrangian
+basis.
+"""
 function local_basis(self::TensorDomain{D}, ::Type{Lagrange}, degree) where D
     # Generate D single-dimensional Lagrangian bases
     poly = Monomials(local_point(D), degree)
@@ -114,6 +184,12 @@ function local_basis(self::TensorDomain{D}, ::Type{Lagrange}, degree) where D
     return reshape(outer(factors...), :)
 end
 
+"""
+    doflist(::TensorDomain, Lagrange, degree::Int)
+
+Create an evaluable computing the degree-of-freedom indices for a
+Lagrangian basis.
+"""
 function doflist(self::TensorDomain{D}, ::Type{Lagrange}, degree) where D
     strides = cumprod(collect(Int, size(self)) * degree .+ 1)
     strides = [1, strides[1:end-1]...]
@@ -129,6 +205,14 @@ function doflist(self::TensorDomain{D}, ::Type{Lagrange}, degree) where D
     (list, max)
 end
 
+
+"""
+    global_basis(::Domain, type, args...)
+
+Create a basis of type *type* on the given domain. The rest of the
+arguments depend on the domain and the type. The return value is an
+evaluable object.
+"""
 function global_basis(args...)
     loc = local_basis(args...)
     (indices, maxindex) = doflist(args...)
