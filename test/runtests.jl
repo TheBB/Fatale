@@ -1,13 +1,16 @@
 using BenchmarkTools
 using LinearAlgebra
-using Test
 using Random
+using SparseArrays
 using StaticArrays
+using Test
 
 using Fatale.Transforms
 using Fatale.Elements
 using Fatale.Evaluables
 using Fatale.Domains
+using Fatale.Integrate
+using Fatale.Utils
 
 
 # Lightweight elements for testing
@@ -64,4 +67,8 @@ end
 
 @testset "Bases" begin
     include("Bases.jl")
+end
+
+@testset "Integrate" begin
+    include("Integrate.jl")
 end
