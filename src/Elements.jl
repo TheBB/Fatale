@@ -25,6 +25,14 @@ Base.ndims(::ReferenceElement{D}) where D = D
 
 
 """
+    quadrule(::ReferenceElement, args...)
+
+Generate a quadrature rule for a reference element.
+"""
+quadrule(::ReferenceElement, args...) = throw("not implemented")
+
+
+"""
     SimplexReference{D}
 
 Represents a D-dimensional simplex reference element (line, triangle,
@@ -43,10 +51,9 @@ end
 
 
 """
-    TensorReference(terms...)
+    TensorReference(terms::ReferenceElement...)
 
-Represents a tensor product reference element, e.g. for D-dimensional
-structured meshes use `Tensor(ntuple(_->SimplexReference{1}(), D))`.
+Represents a tensor product reference element.
 """
 struct TensorReference{D, K} <: ReferenceElement{D}
     terms :: K
@@ -59,6 +66,12 @@ end
     :(TensorReference{$dims, $K}(terms))
 end
 
+"""
+    TensorReference(term::ReferenceElement, n::Int)
+
+A 'power' reference element, equivalent to
+TensorReference(term, term, ....)
+"""
 function TensorReference(term::ReferenceElement, n::Int)
     TensorReference{n, NTuple{n, typeof(term)}}(ntuple(_->term, n))
 end
@@ -73,17 +86,29 @@ function quadrule(self::TensorReference{D}, npts::NTuple{D, Int}) where D
 end
 
 
+"""
+    AbstractElement{D}
+
+A supertype for all elements of dimension D.
+
+Implementations of AbstractElement should implement one or more of
+- Fatale.Elements.reference
+- Fatale.Elements.loctrans
+- Fatale.Elements.globtrans
+- Fatale.Elements.index
+"""
 abstract type AbstractElement{D} end
 
 Base.ndims(::Type{<:AbstractElement{D}}) where D = D
 Base.ndims(::AbstractElement{D}) where D = D
+
 
 """
     reference(::Type{<:AbstractElement})
 
 Obtain a reference element for a given element type.
 """
-reference(::Type{<:AbstractElement}) = nothing
+reference(::Type{<:AbstractElement}) = throw("not implemented")
 
 
 """
@@ -97,28 +122,58 @@ names are reserved:
 - :index -> element index (any type)
 
 Others can be freely used. See Fatale.Evaluables.ElementData.
+
+To implement these interfaces for a custom element type, it's simpler
+to implement the functions
+- Fatale.Elements.loctrans
+- Fatale.Elements.globtrans
+- Fatale.Elements.index
 """
-elementdata(::AbstractElement, ::Val, args...) = nothing
+elementdata(::AbstractElement, ::Val, args...) = throw("not implemented")
 
 # Easier interfaces for the standard names
 @inline elementdata(el::AbstractElement, ::Val{:loctrans}) = loctrans(el)
 @inline elementdata(el::AbstractElement, ::Val{:globtrans}) = globtrans(el)
 @inline elementdata(el::AbstractElement, ::Val{:index}) = index(el)
 
+# Standard implementations
 @inline loctrans(::AbstractElement{D}) where D = Empty{D,Float64}()
-@inline globtrans(::AbstractElement) = nothing
-@inline index(::AbstractElement) = nothing
+@inline globtrans(::AbstractElement) = throw("not implemented")
+@inline index(::AbstractElement) = throw("not implemented")
 
 
+"""
+    AbstractSubElement{D,P} <: AbstractElement{D}
+
+A standard supertype for sub-elements. Implementations of
+AbstractSubElement should implement
+- Fatale.Elements.parent
+- Fatale.Elements.subtrans
+
+An AbstractSubElement inherits its parents global transformation and
+index, and its local transformation is the composition of the return
+value of *subtrans* and the local transformation of its parent.
+"""
 abstract type AbstractSubElement{D,P} <: AbstractElement{D} end
 
-parent(::AbstractSubElement) = nothing
+"""
+    parent(::AbstractSubElement)
+
+Return the parent element of a given sub-element.
+"""
+parent(::AbstractSubElement) = throw("not implemented")
 
 @inline loctrans(self::AbstractSubElement) = Chain(subtrans(self), loctrans(parent(self)))
 @inline globtrans(self::AbstractSubElement) = globtrans(parent(self))
 @inline index(self::AbstractSubElement) = index(parent(self))
 
 
+"""
+    SubElement(trf::Transform, parent::AbstractElement)
+
+A concrete implementation of a sub-element that is good enough for
+most purposes.
+"""
 struct SubElement{D,T,P} <: AbstractSubElement{D,P}
     transform :: T
     parent :: P
