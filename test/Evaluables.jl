@@ -2,22 +2,22 @@
     Random.seed!(201906141219)
     func = optimize(local_point(2))
 
-    element = Element(Shift(@SVector rand(2)))
+    element = Element(shift(@SVector rand(2)))
     quadpt = @SVector rand(2)
     @test func(element, quadpt) == quadpt
 
-    sub = SubElement(Updim{1,2}(5.0), element)
+    sub = SubElement(updim(Val(2), 1, 5.0), element)
     quadpt = @SVector rand(1)
     @test func(sub, quadpt) == [5.0, quadpt[1]]
 
-    sub = SubElement(Updim{2,2}(5.0), element)
+    sub = SubElement(updim(Val(2), 2, 5.0), element)
     quadpt = @SVector rand(1)
     @test func(sub, quadpt) == [quadpt[1], 5.0]
 
     @noallocs begin
         func = optimize(local_point(2))
-        element = Element(Shift(@SVector rand(2)))
-        sub = SubElement(Updim{2,2}(5.0), element)
+        element = Element(shift(@SVector rand(2)))
+        sub = SubElement(updim(Val(2), 2, 5.0), element)
         quadpt = @SVector rand(1)
         @bench $func($sub, $quadpt)
     end
@@ -27,24 +27,24 @@ end
 @testset "GlobalPoint" begin
     Random.seed!(201906141243)
     func = optimize(global_point(2))
-    shift = @SVector rand(2)
+    offset = @SVector rand(2)
 
-    element = Element(Shift(shift))
+    element = Element(shift(offset))
     quadpt = @SVector rand(2)
-    @test func(element, quadpt) ≈ quadpt + shift
+    @test func(element, quadpt) ≈ quadpt + offset
 
-    sub = SubElement(Updim{1,2}(4.0), element)
+    sub = SubElement(updim(Val(2), 1, 4.0), element)
     quadpt = @SVector rand(1)
-    @test func(sub, quadpt) ≈ [4.0, quadpt[1]] + shift
+    @test func(sub, quadpt) ≈ [4.0, quadpt[1]] + offset
 
-    sub = SubElement(Updim{2,2}(4.0), element)
+    sub = SubElement(updim(Val(2), 2, 4.0), element)
     quadpt = @SVector rand(1)
-    @test func(sub, quadpt) ≈ [quadpt[1], 4.0] + shift
+    @test func(sub, quadpt) ≈ [quadpt[1], 4.0] + offset
 
     @noallocs begin
         func = optimize(global_point(2))
-        element = Element(Shift(@SVector rand(2)))
-        sub = SubElement(Updim{2,2}(5.0), element)
+        element = Element(shift(@SVector rand(2)))
+        sub = SubElement(updim(Val(2), 2, 5.0), element)
         quadpt = @SVector rand(1)
         @bench $func($sub, $quadpt)
     end
@@ -119,7 +119,7 @@ end
 
 @testset "GetIndex" begin
     Random.seed!(201906221119)
-    data = @MArray rand(3,5,7)
+    data = @SArray rand(3,5,7)
 
     ufunc = Constant(data)[1, :, :]
     @test size(ufunc) == (5, 7)

@@ -2,8 +2,8 @@ using BenchmarkTools
 using LinearAlgebra
 using Random
 using SparseArrays
-using StaticArrays
 using Test
+import StaticArrays: Scalar, SVector, SMatrix, @SVector, @SMatrix, @SArray
 
 using Fatale.Transforms
 using Fatale.Elements

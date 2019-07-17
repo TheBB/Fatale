@@ -1,13 +1,15 @@
 module Transforms
 
-import Base.Iterators: flatten
+import Base.Iterators: flatten, product
 import Base: @_inline_meta
+using LinearAlgebra
 using StaticArrays
 
 using ..Utils
 
 export AbstractTransform, todims, fromdims
-export Empty, Shift, Updim
+export Empty, Affine
+export shift, updim
 
 
 """
@@ -93,57 +95,33 @@ Empty(D) = Empty(D, Float64)
 
 
 """
-    Shift(x::SVector)
+    Affine(a::SMatrix, b::SVector)
 
-A shifting transformation that adds *x* to each input vector.
+An affine transformation acting as x -> a*x + b.
 """
-struct Shift{D, R} <: AbstractTransform{D, D, R}
-    offset :: SVector{D, R}
-    Shift(offset::SVector{D,R}) where {D,R} = new{D,R}(offset)
-end
+struct Affine{F, T, R, L} <: AbstractTransform{F, T, R}
+    matrix :: SMatrix{T, F, R, L}
+    vector :: SVector{T, R}
 
-@inline (self::Shift)(point) = point + self.offset
-@inline (self::Shift)(point, grad) = (point + self.offset, grad)
-
-
-"""
-    Updim{I, N}(value)
-
-Create a transformation increasing the dimension of a space by one, by
-inserting the element `value` at index `I`. The final space has
-dimension `N`.
-"""
-struct Updim{Ins, From, To, R} <: AbstractTransform{From, To, R}
-    value :: R
-
-    @inline function Updim{Ins, To}(value) where {Ins, To}
-        @assert 1 <= Ins <= To
-        @assert 1 <= To <= 3
-        new{Ins, To-1, To, typeof(value)}(value)
+    function Affine(matrix::SMatrix{T, F, R}, vector::SVector{T, R}) where {T, F, R}
+        new{F, T, R, F*T}(matrix, vector)
     end
 end
 
-@generated function (self::Updim{Ins})(point) where Ins
-    elements = [:(point[$i]) for i in 1:fromdims(self)]
-    insert!(elements, Ins, :(self.value))
-    quote
-        @_inline_meta
-        @SVector [$(elements...)]
-    end
-end
+@inline (self::Affine)(point) = self.matrix * point + self.vector
+@inline (self::Affine)(point, grad) = (self.matrix * point + self.vector, _exterior(self.matrix * grad))
 
-@generated function (self::Updim{Ins})(point, grad) where Ins
-    from = fromdims(self)
-    to = todims(self)
-    R = eltype(self)
+@generated function _exterior(matrix)
+    to = size(matrix, 1)
+    from = size(matrix, 2)
+    R = eltype(matrix)
 
-    # Insert a new row with only zeros
-    src_cols = [[:(grad[$i,$j]) for i in 1:from] for j in 1:from]
-    for col in src_cols
-        insert!(col, Ins, :(zero($R)))
-    end
+    from == to && return :(matrix)
+    @assert to == from + 1
+    @assert 1 <= to <= 3
 
     # Exterior: Add a new column orthogonal to all the existing ones
+    src_cols = [[:(matrix[$i,$j]) for i in 1:to] for j in 1:from]
     if to == 1
         new_col = [:(one($R))]
     elseif to == 2
@@ -157,8 +135,29 @@ end
     elements = flatten((src_cols..., new_col))
     quote
         @_inline_meta
-        newgrad = SMatrix{$to,$to}($(elements...))
-        (self(point), newgrad)
+        SMatrix{$to,$to}($(elements...))
+    end
+end
+
+
+@inline shift(x::SVector{N,T}) where {N,T} = Affine(SMatrix{N,N,T}(I), x)
+
+@generated function updim(::Val{T}, ins::Int, value::R) where {T,R}
+    vecelements = [:($i == ins ? value : $(zero(R))) for i in 1:T]
+    mxelements = Any[
+        :($(zero(R)))
+        for (_, _) in product(1:T, 1:T-1)
+    ]
+    for i in 1:T-1
+        mxelements[i,i] = :($i < ins ? $(one(R)) : $(zero(R)))
+        mxelements[i+1,i] = :($i >= ins ? $(one(R)) : $(zero(R)))
+    end
+
+    quote
+        @_inline_meta
+        mx = SMatrix{$T,$(T-1),$R}($(mxelements...))
+        vec = SVector{$T,$R}($(vecelements...))
+        Affine(mx, vec)
     end
 end
 

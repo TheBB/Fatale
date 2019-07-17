@@ -1,6 +1,6 @@
 module Domains
 
-using StaticArrays
+import StaticArrays: SVector, SMatrix
 
 using ..Transforms
 using ..Elements
@@ -128,7 +128,7 @@ struct TensorElement{D} <: AbstractElement{D}
     index :: NTuple{D, Int}
 end
 
-@inline Elements.globtrans(self::TensorElement{D}) where D = Shift(SVector{D,Float64}(self.index) - 1.0)
+@inline Elements.globtrans(self::TensorElement{D}) where D = shift(SVector{D,Float64}(self.index) - 1.0)
 @inline Elements.index(self::TensorElement) = SVector(self.index)
 Elements.reference(::Type{TensorElement{D}}) where D = TensorReference(SimplexReference{1}(), D)
 Elements.reference(::Type{<:SubElement{D,T,<:TensorElement}}) where {D,T} = TensorReference(SimplexReference{1}(), D)
@@ -159,7 +159,7 @@ function boundary_trf(self::TensorDomain{D}, I) where D
     d = D
     for (i, ix) in reverse(collect(enumerate(I)))
         ix isa Colon && continue
-        trf = trf ∘ Updim{i,d}(ix == 1 ? 0.0 : 1.0)
+        trf = trf ∘ updim(Val(d), i, ix == 1 ? 0.0 : 1.0)
         d -= 1
     end
     trf
