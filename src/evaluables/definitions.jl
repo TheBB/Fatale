@@ -431,6 +431,43 @@ struct __Negate end
 
 
 """
+    PermuteDims(arg, perm)
+
+Permute dimensions of *arg*.
+"""
+struct PermuteDims <: ArrayEvaluable
+    arg :: ArrayEvaluable
+    perm :: Dims
+
+    function PermuteDims(arg::ArrayEvaluable, perm::Dims)
+        @assert Set(perm) == Set(1:ndims(arg))
+        @assert length(perm) == ndims(arg)
+        new(arg, perm)
+    end
+end
+
+arguments(self::PermuteDims) = Evaluable[self.arg]
+Base.size(self::PermuteDims) = Tuple(size(self.arg, i) for i in self.perm)
+
+codegen(self::PermuteDims) = __PermuteDims(self.perm)
+struct __PermuteDims{I}
+    __PermuteDims(I) = new{I}()
+end
+@generated function (::__PermuteDims{I})(_, arg) where I
+    insize = size(arg)
+    outsize = Tuple(size(arg, i) for i in I)
+
+    lininds = LinearIndices(insize)
+    indices = (lininds[(cind[i] for i in I)...] for cind in CartesianIndices(outsize))
+    exprs = (:(arg[$i]) for i in indices)
+    quote
+        @_inline_meta
+        SArray{Tuple{$(outsize...)}}($(exprs...))
+    end
+end
+
+
+"""
     Reshape(arg, size...)
 
 Reshape *arg* to a new size.

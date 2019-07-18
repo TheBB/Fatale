@@ -237,6 +237,20 @@ end
 end
 
 
+@testset "PermuteDims" begin
+    Random.seed!(201907181354)
+    data = @SArray rand(3,5,7)
+
+    func = optimize(permutedims(Constant(data), (2, 1, 3)))
+    @test size(func) == (5, 3, 7)
+    @test func(nothing, nothing) == permutedims(data, (2, 1, 3))
+
+    @noallocs begin
+        @bench $func(nothing, nothing)
+    end
+end
+
+
 @testset "Reshape" begin
     Random.seed!(201906201022)
     arr = @SArray rand(5, 3, 7)

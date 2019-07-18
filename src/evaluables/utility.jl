@@ -60,6 +60,16 @@ function Base.reshape(self::Evaluable, newsize...)
     Reshape(self, newsize...)
 end
 
+function Base.adjoint(self::ArrayEvaluable)
+    @assert eltype(self) <: Real
+    transpose(self)
+end
+function Base.transpose(self::ArrayEvaluable)
+    @assert ndims(self) == 2
+    permutedims(self, (2, 1))
+end
+Base.permutedims(self::ArrayEvaluable, perm) = PermuteDims(self, perm)
+
 Base.reshape(self::Reshape, args...) = reshape(self.arg, args...)
 Base.reshape(self::Constant, args...) = Constant(reshape(self.value, args...))
 
