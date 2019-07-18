@@ -271,24 +271,38 @@ An evaluable returning a view into another array.
 """
 struct GetIndex <: ArrayEvaluable
     arg :: ArrayEvaluable
-    index :: VarTuple{Union{Colon, Int}}
+    index :: VarTuple{ArrayEvaluable}
 
-    function GetIndex(arg, index::Union{Colon, Int}...)
+    # At the moment, to simplify, we lower everything to array indices
+    # before compiling
+    function GetIndex(arg, index::ArrayEvaluable...)
+        @assert all(eltype(ix) == Int for ix in index)
         @assert length(index) == ndims(arg)
         new(arg, index)
     end
 end
 
-arguments(self::GetIndex) = Evaluable[self.arg]
-Base.size(self::GetIndex) = Tuple(s for (s,i) in zip(size(self.arg), self.index) if i isa Colon)
-
-codegen(self::GetIndex) = __GetIndex(self.index)
-struct __GetIndex{I}
-    __GetIndex(I) = new{I}()
+const _IndexTypes = Union{Int, SArray, Colon, ArrayEvaluable}
+function GetIndex(arg, index::_IndexTypes...)
+    cleaned = map(zip(size(arg), index)) do (sz, ix)
+        ix isa ArrayEvaluable && return ix
+        ix isa Colon && return Constant(1:sz)
+        Constant(ix)
+    end
+    GetIndex(arg, cleaned...)
 end
-@generated (self::__GetIndex{I})(_, arg) where I = quote
-    @_inline_meta
-    arg[$(I...)]
+
+arguments(self::GetIndex) = Evaluable[self.arg, self.index...]
+Base.size(self::GetIndex) = Tuple(flatten(size(ix) for ix in self.index))
+
+codegen(self::GetIndex) = __GetIndex()
+struct __GetIndex end
+@generated function (self::__GetIndex)(_, arg, indices...)
+    inds = [:(indices[$i]) for i in 1:length(indices)]
+    quote
+        @_inline_meta
+        @inbounds arg[$(inds...)]
+    end
 end
 
 
