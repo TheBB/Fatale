@@ -73,6 +73,7 @@ function Base.adjoint(self::ArrayEvaluable)
     transpose(self)
 end
 function Base.transpose(self::ArrayEvaluable)
+    ndims(self) == 1 && return insertaxis(self; left=1)
     @assert ndims(self) == 2
     permutedims(self, (2, 1))
 end
