@@ -158,9 +158,6 @@ struct Add <: ArrayEvaluable
     end
 end
 
-Add(self::Evaluable) = self
-Add(left::Evaluable, right::Evaluable) = Add((left, right))
-
 arguments(self::Add) = self.args
 Base.size(self::Add) = self.dims
 
@@ -249,9 +246,6 @@ An evaluable returning the constant object *v*.
 struct Constant <: ArrayEvaluable
     value :: SArray
 end
-
-Constant(value::Real) = Constant(Scalar(value))
-Constant(value::AbstractArray) = Constant(SArray{Tuple{size(value)...}}(value))
 
 Base.eltype(self::Constant) = eltype(self.value)
 Base.ndims(self::Constant) = ndims(self.value)
@@ -391,15 +385,6 @@ struct Multiply <: ArrayEvaluable
     end
 end
 
-Multiply(self::Evaluable) = self
-Multiply(left::Evaluable, right::Evaluable) = Multiply((left, right))
-Multiply(left::Inflate, right::Inflate) =
-    Inflate(Multiply(left.arg, right), left.indices, left.newsize, left.axis)
-Multiply(left::Inflate, right::Evaluable) =
-    Inflate(Multiply(left.arg, right), left.indices, left.newsize, left.axis)
-Multiply(left::Evaluable, right::Inflate) =
-    Inflate(Multiply(left, right.arg), right.indices, right.newsize, right.axis)
-
 arguments(self::Multiply) = self.args
 Base.size(self::Multiply) = self.dims
 
@@ -476,22 +461,6 @@ struct Reshape <: ArrayEvaluable
     arg :: ArrayEvaluable
     shape :: Dims
     Reshape(arg, newsize...) = new(arg, Tuple(newsize))
-end
-
-function Reshape(self::Inflate, newsize...)
-    infaxis = self.axis
-    newsize = collect(Int, newsize)
-
-    if infaxis == 1
-        new_infaxis = something(findfirst(!(==(1)), newsize))
-    else
-        before = prod(size(self)[1:infaxis-1])
-        new_infaxis = something(findfirst(==(before), cumprod(newsize))) + 1
-    end
-
-    @assert newsize[new_infaxis] == size(self, infaxis)
-    newsize[new_infaxis] = size(self.arg, infaxis)
-    Inflate(reshape(self.arg, newsize...), self.indices, self.newsize, new_infaxis)
 end
 
 arguments(self::Reshape) = Evaluable[self.arg]

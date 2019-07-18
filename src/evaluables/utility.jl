@@ -60,6 +60,9 @@ function Base.reshape(self::Evaluable, newsize...)
     Reshape(self, newsize...)
 end
 
+Base.reshape(self::Reshape, args...) = reshape(self.arg, args...)
+Base.reshape(self::Constant, args...) = Constant(reshape(self.value, args...))
+
 function Base.adjoint(self::ArrayEvaluable)
     @assert eltype(self) <: Real
     transpose(self)
@@ -69,9 +72,6 @@ function Base.transpose(self::ArrayEvaluable)
     permutedims(self, (2, 1))
 end
 Base.permutedims(self::ArrayEvaluable, perm) = PermuteDims(self, perm)
-
-Base.reshape(self::Reshape, args...) = reshape(self.arg, args...)
-Base.reshape(self::Constant, args...) = Constant(reshape(self.value, args...))
 
 Base.sum(self::Evaluable; dims=:, collapse=false) = Sum(self, dims, collapse)
 
@@ -97,6 +97,12 @@ global_grad(n) = GetProperty(global_coords(n), :grad)
 # ==============================================================================
 # Outer constructors
 
+Add(self::Evaluable) = self
+Add(left::Evaluable, right::Evaluable) = Add((left, right))
+
+Constant(value::Real) = Constant(Scalar(value))
+Constant(value::AbstractArray) = Constant(SArray{Tuple{size(value)...}}(value))
+
 Contract(left::ArrayEvaluable, right::ArrayEvaluable, lind::Dims, rind::Dims, target::Dims) =
     Contract((left, right), (lind, rind), target)
 
@@ -108,3 +114,30 @@ function Contract(left::Zeros, right::ArrayEvaluable, lind::Dims, rind::Dims, ta
 end
 Contract(left::ArrayEvaluable, right::Zeros, lind::Dims, rind::Dims, target::Dims) =
     Contract(right, left, rind, lind, target)
+
+Multiply(self::Evaluable) = self
+Multiply(left::Evaluable, right::Evaluable) = Multiply((left, right))
+Multiply(left::Inflate, right::Inflate) =
+    Inflate(Multiply(left.arg, right), left.indices, left.newsize, left.axis)
+Multiply(left::Inflate, right::Evaluable) =
+    Inflate(Multiply(left.arg, right), left.indices, left.newsize, left.axis)
+Multiply(left::Evaluable, right::Inflate) =
+    Inflate(Multiply(left, right.arg), right.indices, right.newsize, right.axis)
+
+function Reshape(self::Inflate, newsize...)
+    infaxis = self.axis
+    newsize = collect(Int, newsize)
+
+    if infaxis == 1
+        new_infaxis = something(findfirst(!(==(1)), newsize))
+    else
+        before = prod(size(self)[1:infaxis-1])
+        new_infaxis = something(findfirst(==(before), cumprod(newsize))) + 1
+    end
+
+    @assert newsize[new_infaxis] == size(self, infaxis)
+    newsize[new_infaxis] = size(self.arg, infaxis)
+    Inflate(reshape(self.arg, newsize...), self.indices, self.newsize, new_infaxis)
+end
+
+PermuteDims(self::Constant, perm::Dims) = Constant(permutedims(self.value, perm))
