@@ -85,9 +85,11 @@ LinearAlgebra.dot(left::ArrayEvaluable, right::ArrayEvaluable) = sum(left .* rig
 LinearAlgebra.dot(left::ArrayEvaluable, right) = sum(left .* Constant(right); collapse=true)
 LinearAlgebra.dot(left, right::ArrayEvaluable) = sum(Constant(left) .* right; collapse=true)
 
-function LinearAlgebra.norm(self::ArrayEvaluable, p=2)
+LinearAlgebra.normalize(vec) = vec ./ norm(vec, 2)
+
+function LinearAlgebra.norm(self::ArrayEvaluable, p::Real=2)
     @assert p == 2
-    sqrt(dot(self, self))
+    sqrt.(dot(self, self))
 end
 
 LinearAlgebra.norm_sqr(self::ArrayEvaluable) = dot(self, self)
@@ -109,6 +111,14 @@ local_grad(n) = GetProperty(local_coords(n), :grad)
 global_coords(n) = ApplyTrans(global_transform(), local_coords(n), n)
 global_point(n) = GetProperty(global_coords(n), :point)
 global_grad(n) = GetProperty(global_coords(n), :grad)
+
+function normal(geom)
+    @assert ndims(geom) == 1
+    lgrad = grad(geom, size(geom, 1))
+    G = lgrad[:, 1:end-1]
+    n = lgrad[:, end]
+    normalize(n - G * inv(G' * G) * G' * n)
+end
 
 
 # ==============================================================================
