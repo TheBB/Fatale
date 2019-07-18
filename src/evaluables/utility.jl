@@ -128,7 +128,7 @@ Add(self::Evaluable) = self
 Add(left::Evaluable, right::Evaluable) = Add((left, right))
 
 Constant(value::Real) = Constant(Scalar(value))
-Constant(value::AbstractArray) = Constant(SArray{Tuple{size(value)...}}(value))
+Constant(value::AbstractArray) = Constant(SArray{Tuple{size(value)...}, eltype(value)}(value))
 
 Contract(left::ArrayEvaluable, right::ArrayEvaluable, lind::Dims, rind::Dims, target::Dims) =
     Contract((left, right), (lind, rind), target)
