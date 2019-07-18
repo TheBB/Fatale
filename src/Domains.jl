@@ -159,7 +159,7 @@ function boundary_trf(self::TensorDomain{D}, I) where D
     d = D
     for (i, ix) in reverse(collect(enumerate(I)))
         ix isa Colon && continue
-        trf = trf ∘ updim(Val(d), i, ix == 1 ? 0.0 : 1.0)
+        trf = trf ∘ updim(Val(d), i, ix == 1 ? 0.0 : 1.0, ix != 1)
         d -= 1
     end
     trf

@@ -20,7 +20,7 @@
     @test reference(eltype(bnd)) == TensorReference(SimplexReference{1}(), 2)
     @test size(bnd) == (5, 7)
     @test index(bnd[3, 3]) == [3, 3, 3]
-    @test loctrans(bnd[2, 6]) == updim(Val(3), 1, 1.0)
+    @test loctrans(bnd[2, 6]) == updim(Val(3), 1, 1.0, true)
     @test globtrans(bnd[2, 6]) == shift(SVector(2.0, 1.0, 5.0))
 
     bnd = Boundary(domain)[:, 1, end]
@@ -28,6 +28,6 @@
     @test reference(eltype(bnd)) == TensorReference(SimplexReference{1}(), 1)
     @test size(bnd) == (3,)
     @test index(bnd[2]) == [2, 1, 7]
-    @test loctrans(bnd[1]) == updim(Val(3), 3, 1.0) ∘ updim(Val(2), 2, 0.0)
+    @test loctrans(bnd[1]) == updim(Val(3), 3, 1.0, true) ∘ updim(Val(2), 2, 0.0)
     @test globtrans(bnd[3]) == shift(SVector(2.0, 0.0, 6.0))
 end

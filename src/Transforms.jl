@@ -95,23 +95,27 @@ Empty(D) = Empty(D, Float64)
 
 
 """
-    Affine(a::SMatrix, b::SVector)
+    Affine(a::SMatrix, b::SVector, flipped::Bool)
 
 An affine transformation acting as x -> a*x + b.
 """
 struct Affine{F, T, R, L} <: AbstractTransform{F, T, R}
     matrix :: SMatrix{T, F, R, L}
     vector :: SVector{T, R}
+    flipped :: Bool
 
-    function Affine(matrix::SMatrix{T, F, R}, vector::SVector{T, R}) where {T, F, R}
-        new{F, T, R, F*T}(matrix, vector)
+    function Affine(matrix::SMatrix{T, F, R}, vector::SVector{T, R}, flipped::Bool=false) where {T, F, R}
+        new{F, T, R, F*T}(matrix, vector, flipped)
     end
 end
 
 @inline (self::Affine)(point) = self.matrix * point + self.vector
-@inline (self::Affine)(point, grad) = (self.matrix * point + self.vector, _exterior(self.matrix * grad))
+@inline (self::Affine)(point, grad) = (
+    self.matrix * point + self.vector,
+    _exterior(self.matrix * grad, self.flipped)
+)
 
-@generated function _exterior(matrix)
+@generated function _exterior(matrix, flipped)
     to = size(matrix, 1)
     from = size(matrix, 2)
     R = eltype(matrix)
@@ -132,6 +136,8 @@ end
         new_col = [:($c*$f - $e*$d), :($e*$b - $a*$f), :($a*$d - $c*$b)]
     end
 
+    new_col = [:((1-2*Int(flipped))*$c) for c in new_col]
+
     elements = flatten((src_cols..., new_col))
     quote
         @_inline_meta
@@ -142,7 +148,7 @@ end
 
 @inline shift(x::SVector{N,T}) where {N,T} = Affine(SMatrix{N,N,T}(I), x)
 
-@generated function updim(::Val{T}, ins::Int, value::R) where {T,R}
+@generated function updim(::Val{T}, ins::Int, value::R, flipped::Bool=false) where {T,R}
     vecelements = [:($i == ins ? value : $(zero(R))) for i in 1:T]
     mxelements = Any[
         :($(zero(R)))
@@ -157,7 +163,7 @@ end
         @_inline_meta
         mx = SMatrix{$T,$(T-1),$R}($(mxelements...))
         vec = SVector{$T,$R}($(vecelements...))
-        Affine(mx, vec)
+        Affine(mx, vec, flipped)
     end
 end
 
