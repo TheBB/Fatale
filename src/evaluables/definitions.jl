@@ -453,6 +453,49 @@ end
 
 
 """
+    Power(arg, exp)
+
+Elementwise power with fixed real exponents.
+"""
+struct Power <: ArrayEvaluable
+    arg :: ArrayEvaluable
+    exp :: Real
+
+    function Power(arg, exp::Real)
+        exp == -1 && return Reciprocal(arg)
+        exp == 0 && return Constant(ones(arg))
+        exp == 1/2 && return Sqrt(arg)
+        exp == 1 && return arg
+        new(arg, exp)
+    end
+end
+
+arguments(self::Power) = Evaluable[self.arg]
+Base.size(self::Power) = size(self.arg)
+
+codegen(self::Power) = __Power(self.exp)
+struct __Power{P} end
+@inline (::__Power{P})(_, arg) where P = arg .^ P
+
+
+"""
+    Reciprocal(arg)
+
+Compute the elementwise reciprocal of *arg*.
+"""
+struct Reciprocal <: ArrayEvaluable
+    arg :: ArrayEvaluable
+end
+
+arguments(self::Reciprocal) = Evaluable[self.arg]
+Base.size(self::Reciprocal) = size(self.arg)
+
+codegen(self::Reciprocal) = __Sqrt()
+struct __Reciprocal end
+@inline (::__Reciprocal)(_, arg) = 1 ./ arg
+
+
+"""
     Reshape(arg, size...)
 
 Reshape *arg* to a new size.
@@ -474,6 +517,23 @@ end
     @_inline_meta
     SArray{Tuple{$(S...)}}(arg)
 end
+
+
+"""
+    Sqrt(arg)
+
+Elementwise square root.
+"""
+struct Sqrt <: ArrayEvaluable
+    arg :: ArrayEvaluable
+end
+
+arguments(self::Sqrt) = Evaluable[self.arg]
+Base.size(self::Sqrt) = size(self.arg)
+
+codegen(self::Sqrt) = __Sqrt()
+struct __Sqrt end
+@inline (::__Sqrt)(_, arg) = sqrt.(arg)
 
 
 """

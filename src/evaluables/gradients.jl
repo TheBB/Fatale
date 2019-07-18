@@ -57,6 +57,18 @@ function grad(self::Multiply, d::Int)
     Add(terms...)
 end
 
+grad(self::Power, d::Int) = let inner = grad(self.arg, d)
+    flushleft(self.exp .* Power(self.arg, self.exp - 1), inner) .* inner
+end
+
+grad(self::Reciprocal, d::Int) = let inner = grad(self.arg, d)
+    -inner ./ flushleft(self.^2, inner)
+end
+
+grad(self::Sqrt, d::Int) = let inner = grad(self.arg, d)
+    inner ./ flushleft(2 .* self, inner)
+end
+
 grad(self::Constant, d::Int) = Zeros(eltype(self), size(self)..., d)
 grad(self::GetIndex, d::Int) where I = GetIndex(grad(self.arg, d), self.index..., :)
 grad(self::Inv, d::Int) = -Contract(self * grad(self.arg, d), self, (1, 2, 3), (2, 4), (1, 4, 3))

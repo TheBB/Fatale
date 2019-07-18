@@ -42,6 +42,11 @@ Base.:+(left::Union{Real,AbstractArray}, right::Evaluable) = Add(Constant(left),
 
 Base.broadcasted(::typeof(+), args::Evaluable...) = reduce(Add, args)
 Base.broadcasted(::typeof(*), args::Evaluable...) = reduce(Multiply, args)
+Base.broadcasted(::typeof(/), left::Evaluable, right::Evaluable) = Multiply(left, Reciprocal(right))
+Base.broadcasted(::typeof(/), left, right::Evaluable) = Multiply(Constant(left), Reciprocal(right))
+Base.broadcasted(::typeof(/), left::Evaluable, right) = Multiply(left, Constant(1 ./ right))
+Base.broadcasted(::typeof(^), left::Evaluable, right::Real) = Power(left, right)
+Base.broadcasted(::typeof(sqrt), self::Evaluable) = Sqrt(self)
 
 Base.getindex(self::Evaluable, index...) = GetIndex(self, index...)
 
@@ -74,6 +79,17 @@ end
 Base.permutedims(self::ArrayEvaluable, perm) = PermuteDims(self, perm)
 
 Base.sum(self::Evaluable; dims=:, collapse=false) = Sum(self, dims, collapse)
+
+LinearAlgebra.dot(left::ArrayEvaluable, right::ArrayEvaluable) = sum(left .* right; collapse=true)
+LinearAlgebra.dot(left::ArrayEvaluable, right) = sum(left .* Constant(right); collapse=true)
+LinearAlgebra.dot(left, right::ArrayEvaluable) = sum(Constant(left) .* right; collapse=true)
+
+function LinearAlgebra.norm(self::ArrayEvaluable, p=2)
+    @assert p == 2
+    sqrt(dot(self, self))
+end
+
+LinearAlgebra.norm_sqr(self::ArrayEvaluable) = dot(self, self)
 
 
 # ==============================================================================
