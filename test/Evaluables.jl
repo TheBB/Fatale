@@ -150,6 +150,16 @@ end
     @noallocs begin
         @bench $func(nothing, nothing)
     end
+
+    ufunc = Constant(data)[1:end-1, 3, :]
+    @test size(ufunc) == (2, 7)
+    func = optimize(ufunc)
+    res = func(nothing, nothing)
+    @test res == data[1:end-1, 3, :]
+
+    @noallocs begin
+        @bench $func(nothing, nothing)
+    end
 end
 
 

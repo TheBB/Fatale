@@ -282,7 +282,7 @@ struct GetIndex <: ArrayEvaluable
     end
 end
 
-const _IndexTypes = Union{Int, SArray, Colon, ArrayEvaluable}
+const _IndexTypes = Union{Int, SArray, UnitRange{Int}, Colon, ArrayEvaluable}
 function GetIndex(arg, index::_IndexTypes...)
     cleaned = map(zip(size(arg), index)) do (sz, ix)
         ix isa ArrayEvaluable && return ix
