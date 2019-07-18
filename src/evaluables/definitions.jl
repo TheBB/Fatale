@@ -534,6 +534,7 @@ Base.size(self::Sqrt) = size(self.arg)
 codegen(self::Sqrt) = __Sqrt()
 struct __Sqrt end
 @inline (::__Sqrt)(_, arg) = sqrt.(arg)
+@inline (::__Sqrt)(_, arg::Scalar) = Scalar(sqrt(arg[1]))
 
 
 """
