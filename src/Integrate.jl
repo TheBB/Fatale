@@ -3,9 +3,23 @@ module Integrate
 import ..Evaluables: OptimizedEvaluable, OptimizedBlockEvaluable, OptimizedSparseEvaluable
 
 import Strided: UnsafeStridedView, sreshape
-import SparseArrays: sparse
+import SparseArrays: sparse!, dropzeros!
 
 export integrate, to
+
+
+function _sparse!(I, J, V, m, n)
+    csrrowptr = Vector{Int}(undef, m+1)
+    csrcolval = Vector{Int}(undef, length(I))
+    csrnzval = Vector{eltype(V)}(undef, length(I))
+    klasttouch = Vector{Int}(undef, n)
+    A = sparse!(I, J, V, m, n, +, klasttouch, csrrowptr, csrcolval, csrnzval, I, J, V)
+
+    # Work around a bug that leaves more colptrs than necessary,
+    # in which case dropzeros! won't work
+    resize!(A.colptr, n+1)
+    dropzeros!(A)
+end
 
 
 function integrate(func::OptimizedEvaluable, domain, quadrule)
@@ -41,7 +55,7 @@ function integrate(func::OptimizedSparseEvaluable, domain, quadrule)
         i += l
     end
 
-    sparse(I, J, V, size(func)...)
+    _sparse!(I, J, V, size(func)...)
 end
 
 
