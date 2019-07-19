@@ -58,7 +58,7 @@ end
     arr2 = @SArray rand(2,2)
     arr3 = @SArray rand(2,1,3)
 
-    func = .+(Constant(arr1), Constant(arr2), Constant(arr3))
+    func = .+(DummyConstant(arr1), DummyConstant(arr2), DummyConstant(arr3))
     @test size(func) == (2, 2, 3)
     func = optimize(func)
 
@@ -76,23 +76,23 @@ end
     mx1 = @SMatrix rand(2,3)
     mx2 = @SMatrix rand(3,2)
     func = optimize(Contract(
-        (Constant(mx1), Constant(mx2)),
+        (DummyConstant(mx1), DummyConstant(mx2)),
         ((1,2), (2,3)), (1,3)
     ))
     @test func(nothing, nothing) ≈ mx1 * mx2
 
-    func = optimize(Constant(mx1) * Constant(mx2))
+    func = optimize(DummyConstant(mx1) * DummyConstant(mx2))
     @test func(nothing, nothing) ≈ mx1 * mx2
 
     mx3 = @SMatrix rand(2,8)
     func = optimize(Contract(
-        (Constant(mx1), Constant(mx2), Constant(mx3)),
+        (DummyConstant(mx1), DummyConstant(mx2), DummyConstant(mx3)),
         ((1,2), (2,3), (3,4)), (1,4)
     ))
     @test func(nothing, nothing) ≈ mx1 * mx2 * mx3
 
     func = optimize(Contract(
-        (Constant(mx1), Constant(mx2), Constant(mx3')),
+        (DummyConstant(mx1), DummyConstant(mx2), DummyConstant(mx3')),
         ((10,30), (30,90), (71,10)), (71,90)
     ))
     @test func(nothing, nothing) ≈ mx3' * mx1 * mx2
@@ -121,7 +121,7 @@ end
     Random.seed!(201906221119)
     data = @SArray rand(3,5,7)
 
-    ufunc = Constant(data)[1, :, :]
+    ufunc = DummyConstant(data)[1, :, :]
     @test size(ufunc) == (5, 7)
     func = optimize(ufunc)
     res = func(nothing, nothing)
@@ -131,7 +131,7 @@ end
         @bench $func(nothing, nothing)
     end
 
-    ufunc = Constant(data)[3, :, 4]
+    ufunc = DummyConstant(data)[3, :, 4]
     @test size(ufunc) == (5,)
     func = optimize(ufunc)
     res = func(nothing, nothing)
@@ -141,7 +141,7 @@ end
         @bench $func(nothing, nothing)
     end
 
-    ufunc = Constant(data)[:, 2, :]
+    ufunc = DummyConstant(data)[:, 2, :]
     @test size(ufunc) == (3, 7)
     func = optimize(ufunc)
     res = func(nothing, nothing)
@@ -151,7 +151,7 @@ end
         @bench $func(nothing, nothing)
     end
 
-    ufunc = Constant(data)[1:end-1, 3, :]
+    ufunc = DummyConstant(data)[1:end-1, 3, :]
     @test size(ufunc) == (2, 7)
     func = optimize(ufunc)
     res = func(nothing, nothing)
@@ -167,20 +167,20 @@ end
     Random.seed!(201906191343)
 
     data = @SArray rand(1,1)
-    func = optimize(inv(Constant(data)))
+    func = optimize(inv(DummyConstant(data)))
     @test func(nothing, nothing) ≈ inv(data)
 
     data = @SArray rand(2,2)
-    func = optimize(inv(Constant(data)))
+    func = optimize(inv(DummyConstant(data)))
     @test func(nothing, nothing) ≈ inv(data)
 
     data = @SArray rand(3,3)
-    func = optimize(inv(Constant(data)))
+    func = optimize(inv(DummyConstant(data)))
     @test func(nothing, nothing) ≈ inv(data)
 
     @noallocs begin
         data = @SArray rand(3,3)
-        func = optimize(inv(Constant(data)))
+        func = optimize(inv(DummyConstant(data)))
         @bench $func(nothing, nothing)
     end
 end
@@ -213,7 +213,7 @@ end
     arr2 = @SArray rand(2,2)
     arr3 = @SArray rand(2,1,3)
 
-    func = .*(Constant(arr1), Constant(arr2), Constant(arr3))
+    func = .*(DummyConstant(arr1), DummyConstant(arr2), DummyConstant(arr3))
     @test size(func) == (2, 2, 3)
     func = optimize(func)
 
@@ -228,7 +228,7 @@ end
 @testset "Negate" begin
     Random.seed!(201906192304)
     data = @SArray rand(5,2)
-    func = optimize(-Constant(data))
+    func = optimize(-DummyConstant(data))
     @test func(nothing, nothing) == -data
 
     @noallocs begin
@@ -241,7 +241,7 @@ end
     Random.seed!(201907181354)
     data = @SArray rand(3,5,7)
 
-    func = optimize(permutedims(Constant(data), (2, 1, 3)))
+    func = optimize(permutedims(DummyConstant(data), (2, 1, 3)))
     @test size(func) == (5, 3, 7)
     @test func(nothing, nothing) == permutedims(data, (2, 1, 3))
 
@@ -255,17 +255,17 @@ end
     Random.seed!(201906201022)
     arr = @SArray rand(5, 3, 7)
 
-    func = optimize(reshape(Constant(arr), 3, 7, 5))
+    func = optimize(reshape(DummyConstant(arr), 3, 7, 5))
     @test func(nothing, nothing) == reshape(arr, 3, 7, 5)
 
-    func = optimize(reshape(Constant(arr), 15, 7))
+    func = optimize(reshape(DummyConstant(arr), 15, 7))
     @test func(nothing, nothing) == reshape(arr, 15, 7)
 
-    func = optimize(reshape(Constant(arr), 3, :))
+    func = optimize(reshape(DummyConstant(arr), 3, :))
     @test func(nothing, nothing) == reshape(arr, 3, 35)
 
     @noallocs begin
-        func = optimize(reshape(Constant(arr), 3, 7, 5))
+        func = optimize(reshape(DummyConstant(arr), 3, 7, 5))
         @bench $func(nothing, nothing)
     end
 end
@@ -275,28 +275,28 @@ end
     Random.seed!(201907120933)
     arr = @SArray rand(2,2,2)
 
-    func = optimize(sum(Constant(arr); dims=(1,)))
+    func = optimize(sum(DummyConstant(arr); dims=(1,)))
     @test func(nothing, nothing) ≈ sum(arr; dims=1)
 
     @noallocs begin
         @bench $func(nothing, nothing)
     end
 
-    func = optimize(sum(Constant(arr); dims=(1,2)))
+    func = optimize(sum(DummyConstant(arr); dims=(1,2)))
     @test func(nothing, nothing) ≈ sum(Array(arr); dims=(1,2))
 
     @noallocs begin
         @bench $func(nothing, nothing)
     end
 
-    func = optimize(sum(Constant(arr); dims=(1,2), collapse=true))
+    func = optimize(sum(DummyConstant(arr); dims=(1,2), collapse=true))
     @test func(nothing, nothing) ≈ dropdims(sum(Array(arr); dims=(1,2)); dims=(1,2))
 
     @noallocs begin
         @bench $func(nothing, nothing)
     end
 
-    func = optimize(sum(Constant(arr); collapse=true))
+    func = optimize(sum(DummyConstant(arr); collapse=true))
     @test func(nothing, nothing) ≈ Scalar(sum(arr))
 end
 

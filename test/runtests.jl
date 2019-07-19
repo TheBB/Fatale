@@ -3,7 +3,7 @@ using LinearAlgebra
 using Random
 using SparseArrays
 using Test
-import StaticArrays: Scalar, SVector, SMatrix, @SVector, @SMatrix, @SArray
+import StaticArrays: Scalar, SVector, SMatrix, SArray, @SVector, @SMatrix, @SArray
 
 using Fatale.Transforms
 using Fatale.Elements
@@ -13,6 +13,7 @@ using Fatale.Integrate
 using Fatale.Utils
 
 
+# ==============================================================================
 # Lightweight elements for testing
 
 struct Element{D, T} <: AbstractElement{D}
@@ -33,6 +34,21 @@ SubElement(trf, parent) = SubElement{fromdims(trf), typeof(trf), typeof(parent)}
 @inline Elements.globtrans(self::SubElement) = globtrans(self.parent)
 
 
+# ==============================================================================
+# Dummy constant evaluable that resists simplification
+
+struct DummyConstant <: Evaluables.ArrayEvaluable
+    value :: SArray
+end
+Base.eltype(self::DummyConstant) = eltype(self.value)
+Base.ndims(self::DummyConstant) = ndims(self.value)
+Base.size(self::DummyConstant) = size(self.value)
+Evaluables.codegen(self::DummyConstant) = Evaluables.__Constant(self.value)
+
+
+# ==============================================================================
+# Some useful macros
+
 "Check that the result of `expr`, which should be a benchmark, has no
 allocations."
 macro noallocs(expr)
@@ -42,12 +58,14 @@ macro noallocs(expr)
     end
 end
 
-
 "Run `expr` as a benchmark with just one sample and evaluation."
 macro bench(expr)
     :(@benchmark $expr samples=1 evals=1)
 end
 
+
+# ==============================================================================
+# Tests
 
 @testset "Transforms" begin
     include("Transforms.jl")
