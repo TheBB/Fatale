@@ -65,9 +65,6 @@ function Base.reshape(self::Evaluable, newsize...)
     Reshape(self, newsize...)
 end
 
-Base.reshape(self::Reshape, args...) = reshape(self.arg, args...)
-Base.reshape(self::Constant, args...) = Constant(reshape(self.value, args...))
-
 function Base.adjoint(self::ArrayEvaluable)
     @assert eltype(self) <: Real
     transpose(self)
@@ -152,6 +149,8 @@ Multiply(left::Inflate, right::Evaluable) =
 Multiply(left::Evaluable, right::Inflate) =
     Inflate(Multiply(left, right.arg), right.indices, right.newsize, right.axis)
 
+Reshape(self::Reshape, args...) = Reshape(self.arg, args...)
+Reshape(self::Constant, args...) = Constant(reshape(self.value, args...))
 function Reshape(self::Inflate, newsize...)
     infaxis = self.axis
     newsize = collect(Int, newsize)
