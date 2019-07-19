@@ -22,6 +22,43 @@ end
 
 
 # ==============================================================================
+# Broadcasting
+
+# Dummy broadcastable object that wraps an Evaluable
+struct Bcast{T<:ArrayEvaluable}
+    wrapped :: T
+end
+Base.broadcastable(self::ArrayEvaluable) = Bcast(self)
+
+# Broadcasting style that overrides everything else
+struct BStyle <: Base.BroadcastStyle end
+Base.BroadcastStyle(::Type{<:Bcast}) = BStyle()
+Base.BroadcastStyle(::BStyle, ::Base.BroadcastStyle) = BStyle()
+
+const materialize = Base.Broadcast.materialize
+const Bcasted{T} = Base.Broadcast.Broadcasted{BStyle, Nothing, T}
+
+_unwrap(bc::Base.Broadcast.Broadcasted) = _unwrap(materialize(bc))
+_unwrap(bc::Bcast) = bc.wrapped
+_unwrap(bc::Evaluable) = bc
+_unwrap(bc::Union{AbstractArray,Real}) = Constant(bc)
+
+materialize(bc::Bcasted{typeof(+)}) = reduce(Add, map(_unwrap, bc.args))
+materialize(bc::Bcasted{typeof(*)}) = reduce(Multiply, map(_unwrap, bc.args))
+
+function materialize(bc::Bcasted{typeof(sqrt)})
+    @assert length(bc.args) == 1
+    Sqrt(_unwrap(bc.args[1]))
+end
+
+function materialize(bc::Bcasted{typeof(/)})
+    numerator = _unwrap(bc.args[1])
+    denominator = reduce(Multiply, map(_unwrap, bc.args[2:end]))
+    Multiply(numerator, Reciprocal(denominator))
+end
+
+
+# ==============================================================================
 # Methods to other functions
 
 function Base.:*(left::Evaluable, right::Evaluable)
@@ -37,16 +74,8 @@ end
 Base.:-(self::Evaluable) = Negate(self)
 Base.:-(left::Evaluable, right) = left + (-right)
 Base.:+(left::Evaluable, right::Evaluable) = Add(left, right)
-Base.:+(left::Evaluable, right::Union{Real,AbstractArray}) = Add(left, Constant(right))
-Base.:+(left::Union{Real,AbstractArray}, right::Evaluable) = Add(Constant(left), right)
-
-Base.broadcasted(::typeof(+), args::Evaluable...) = reduce(Add, args)
-Base.broadcasted(::typeof(*), args::Evaluable...) = reduce(Multiply, args)
-Base.broadcasted(::typeof(/), left::Evaluable, right::Evaluable) = Multiply(left, Reciprocal(right))
-Base.broadcasted(::typeof(/), left, right::Evaluable) = Multiply(Constant(left), Reciprocal(right))
-Base.broadcasted(::typeof(/), left::Evaluable, right) = Multiply(left, Constant(1 ./ right))
-Base.broadcasted(::typeof(^), left::Evaluable, right::Real) = Power(left, right)
-Base.broadcasted(::typeof(sqrt), self::Evaluable) = Sqrt(self)
+Base.:+(left::Evaluable, right) = Add(left, right)
+Base.:+(left, right::Evaluable) = Add(left, right)
 
 Base.getindex(self::Evaluable, index...) = GetIndex(self, index...)
 
@@ -124,6 +153,8 @@ end
 
 Add(self::Evaluable) = self
 Add(left::Evaluable, right::Evaluable) = Add((left, right))
+Add(left::Evaluable, right) = Add((left, Constant(right)))
+Add(left, right::Evaluable) = Add((Constant(left), right))
 
 Constant(value::Real) = Constant(Scalar(value))
 Constant(value::AbstractArray) = Constant(SArray{Tuple{size(value)...}, eltype(value)}(value))
@@ -142,6 +173,8 @@ Contract(left::ArrayEvaluable, right::Zeros, lind::Dims, rind::Dims, target::Dim
 
 Multiply(self::Evaluable) = self
 Multiply(left::Evaluable, right::Evaluable) = Multiply((left, right))
+Multiply(left::Evaluable, right) = Multiply((left, Constant(right)))
+Multiply(left, right::Evaluable) = Multiply((Constant(left), right))
 Multiply(left::Inflate, right::Inflate) =
     Inflate(Multiply(left.arg, right), left.indices, left.newsize, left.axis)
 Multiply(left::Inflate, right::Evaluable) =
