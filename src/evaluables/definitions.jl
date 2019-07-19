@@ -153,6 +153,8 @@ struct Add <: ArrayEvaluable
 
     function Add(args::VarTuple{ArrayEvaluable})
         length(args) == 1 && return args[1]
+        # Simplification: constants should accumulate on the left
+        @assert all(!(arg isa Constant) for arg in args[2:end])
         dims = broadcast_shape(map(size, args)...)
         new(collect(Evaluable, args), dims)
     end
@@ -380,6 +382,9 @@ struct Multiply <: ArrayEvaluable
     dims :: Dims
 
     function Multiply(args::VarTuple{ArrayEvaluable})
+        length(args) == 1 && return args[1]
+        # Simplification: constants should accumulate on the left
+        @assert all(!(arg isa Constant) for arg in args[2:end])
         dims = broadcast_shape(map(size, args)...)
         new(collect(Evaluable, args), dims)
     end

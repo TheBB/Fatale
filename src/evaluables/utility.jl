@@ -151,10 +151,33 @@ end
 # ==============================================================================
 # Outer constructors
 
+# Add: Ensure that constants accumulate on the left, and simplify them there
 Add(self::Evaluable) = self
 Add(left::Evaluable, right::Evaluable) = Add((left, right))
-Add(left::Evaluable, right) = Add((left, Constant(right)))
+Add(left::Evaluable, right) = Add((Constant(right), left))
 Add(left, right::Evaluable) = Add((Constant(left), right))
+Add(left::Evaluable, right::Constant) = Add((right, left))
+Add(left::Constant, right::Constant) = Constant(left.value .+ right.value)
+Add(left::Add, right::Evaluable) = Add((left.args..., right))
+Add(left::Evaluable, right::Add) = Add((right.args..., left))
+Add(left::Constant, right::Add) = Add(right, left)
+
+function Add(left::Add, right::Constant)
+    if left.args[1] isa Constant
+        return Add((left.args[1] .+ right, left.args[2:end]...))
+    end
+    Add((right, left.args...))
+end
+
+function Add(left::Add, right::Add)
+    if left.args[1] isa Constant && right.args[1] isa Constant
+        return Add((left.args[1] .+ right.args[1], left.args[2:end]..., right.args[2:end]...))
+    end
+    if right.args[1] isa Constant
+        return Add((right.args[1], left.args..., right.args[2:end]...))
+    end
+    Add((left.args..., right.args...))
+end
 
 Constant(value::Real) = Constant(Scalar(value))
 Constant(value::AbstractArray) = Constant(SArray{Tuple{size(value)...}, eltype(value)}(value))
@@ -171,10 +194,34 @@ end
 Contract(left::ArrayEvaluable, right::Zeros, lind::Dims, rind::Dims, target::Dims) =
     Contract(right, left, rind, lind, target)
 
+# Multiply: Ensure that constants accumulate on the left, and simplify them there
 Multiply(self::Evaluable) = self
 Multiply(left::Evaluable, right::Evaluable) = Multiply((left, right))
-Multiply(left::Evaluable, right) = Multiply((left, Constant(right)))
+Multiply(left::Evaluable, right) = Multiply((Constant(right), left))
 Multiply(left, right::Evaluable) = Multiply((Constant(left), right))
+Multiply(left::Evaluable, right::Constant) = Multiply((right, left))
+Multiply(left::Constant, right::Constant) = Constant(left.value .* right.value)
+Multiply(left::Multiply, right::Evaluable) = Multiply((left.args..., right))
+Multiply(left::Evaluable, right::Multiply) = Multiply((right.args..., left))
+Multiply(left::Constant, right::Multiply) = Multiply(right, left)
+
+function Multiply(left::Multiply, right::Constant)
+    if left.args[1] isa Constant
+        return Multiply((left.args[1] .* right, left.args[2:end]...))
+    end
+    Multiply((right, left.args...))
+end
+
+function Multiply(left::Multiply, right::Multiply)
+    if left.args[1] isa Constant && right.args[1] isa Constant
+        return Multiply((left.args[1] .* right.args[1], left.args[2:end]..., right.args[2:end]...))
+    end
+    if right.args[1] isa Constant
+        return Multiply((right.args[1], left.args..., right.args[2:end]...))
+    end
+    Multiply(left.args..., right.args...)
+end
+
 Multiply(left::Inflate, right::Inflate) =
     Inflate(Multiply(left.arg, right), left.indices, left.newsize, left.axis)
 Multiply(left::Inflate, right::Evaluable) =

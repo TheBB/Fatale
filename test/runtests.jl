@@ -83,6 +83,10 @@ end
     include("Evaluables.jl")
 end
 
+@testset "Simplification" begin
+    include("Simplification.jl")
+end
+
 @testset "Gradients" begin
     include("Gradients.jl")
 end
