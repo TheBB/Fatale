@@ -3,7 +3,7 @@ module Integrate
 import ..Evaluables: OptimizedEvaluable, OptimizedBlockEvaluable, OptimizedSparseEvaluable
 
 import Strided: UnsafeStridedView, sreshape
-import SparseArrays: sparse!, dropzeros!
+import SparseArrays: sparse!, dropzeros!, nnz
 
 export integrate, to
 
@@ -37,7 +37,7 @@ end
 function integrate(func::OptimizedSparseEvaluable, domain, quadrule)
     @assert ndims(func) == 2
     nelems = length(domain)
-    nentries = length(func)
+    nentries = nnz(func)
 
     I = Vector{Int}(undef, nentries * nelems)
     J = Vector{Int}(undef, nentries * nelems)

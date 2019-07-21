@@ -17,7 +17,19 @@ function _linearize!(data, self::Evaluable)
 end
 
 
-struct OptimizedEvaluable{I, K, S, T}
+abstract type AbstractOptimizedEvaluable{S,T} <: ArrayEvaluable end
+
+Base.eltype(::AbstractOptimizedEvaluable{S,T}) where {S,T} = T
+Base.size(::AbstractOptimizedEvaluable{S}) where S = S
+
+optimize(self::AbstractOptimizedEvaluable) = self
+
+
+# The most fundamental form of optimized evaluable.
+# I: Tuple of integer tuples, I[k] is the results which form the
+# inputs to evaluable number k
+# K: Tuple of evaluable types
+struct OptimizedEvaluable{I, K, S, T} <: AbstractOptimizedEvaluable{S,T}
     funcs :: K
 
     function OptimizedEvaluable(func)
@@ -28,12 +40,12 @@ struct OptimizedEvaluable{I, K, S, T}
     end
 end
 
-Base.eltype(self::OptimizedEvaluable{I,K,S,T}) where {I,K,S,T} = T
-Base.length(self::OptimizedEvaluable) = prod(size(self))
-Base.ndims(self::OptimizedEvaluable) = length(size(self))
-Base.size(self::OptimizedEvaluable{I,K,S}) where {I,K,S} = S
+codegen(self::OptimizedEvaluable) = self
 
 
+# A block is a dense array (an OptimizedEvaluable) together with a
+# tuple of index evaluables, describing the variable placement of the
+# dense array in a sparse superstructure.
 struct OptimizedBlockEvaluable{I, D}
     indices :: I
     data :: D
@@ -45,13 +57,16 @@ struct OptimizedBlockEvaluable{I, D}
     end
 end
 
+OptimizedBlockEvaluable(block::OptimizedBlockEvaluable) = block
+
 Base.eltype(self::OptimizedBlockEvaluable) = eltype(self.data)
 Base.length(self::OptimizedBlockEvaluable) = length(self.data)
 Base.ndims(self::OptimizedBlockEvaluable) = ndims(self.data)
 Base.size(self::OptimizedBlockEvaluable) = size(self.data)
 
 
-struct OptimizedSparseEvaluable{K, S, T}
+# An optimized sparse evaluable is a collection of one or more blocks.
+struct OptimizedSparseEvaluable{K, S, T} <: AbstractOptimizedEvaluable{S,T}
     blocks :: K
 
     function OptimizedSparseEvaluable(blocks, func)
@@ -60,10 +75,8 @@ struct OptimizedSparseEvaluable{K, S, T}
     end
 end
 
-Base.eltype(self::OptimizedSparseEvaluable{K,S,T}) where {K,S,T} = T
-Base.length(self::OptimizedSparseEvaluable) = sum(length, self.blocks)
-Base.ndims(self::OptimizedSparseEvaluable) = length(size(self))
-Base.size(self::OptimizedSparseEvaluable{K,S}) where {K,S} = S
+blocks(self::OptimizedSparseEvaluable) = self.blocks
+SparseArrays.nnz(self::OptimizedSparseEvaluable) = sum(length, self.blocks)
 
 
 """
@@ -80,6 +93,7 @@ function optimize(self::ArrayEvaluable)
     end
 end
 
+_istrivial(self::OptimizedBlockEvaluable) = false
 function _istrivial(self)
     all(enumerate(self.indices)) do (i, ind)
         ind isa Constant && ind.value == 1:size(self.data, i)
@@ -95,7 +109,6 @@ end
     grad = SMatrix{N,N,T}(I)
     self((element=element, point=(point=quadpt, grad=grad)))
 end
-
 
 """
     (::OptimizedEvaluable)(evalargs)

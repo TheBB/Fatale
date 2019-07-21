@@ -7,6 +7,7 @@ using DataStructures
 using LinearAlgebra
 using StaticArrays
 using UnsafeArrays
+using SparseArrays
 
 using ..Elements
 using ..Transforms
