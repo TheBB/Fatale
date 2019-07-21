@@ -196,6 +196,11 @@ Contract(left::ArrayEvaluable, right::Zeros, lind::Dims, rind::Dims, target::Dim
 
 Inv(self::Constant) = Constant(inv(self.value))
 
+function Monomials(self::Constant, d, p)
+    func = __Monomials(d, p, eltype(self), size(self))
+    Constant(func(nothing, self.value))
+end
+
 # Multiply: Ensure that constants accumulate on the left, and simplify them there
 Multiply(self::Evaluable) = self
 Multiply(left::Evaluable, right::Evaluable) = Multiply((left, right))

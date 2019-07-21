@@ -375,10 +375,13 @@ Monomials(arg, degree) = Monomials(arg, degree, 0)
 arguments(self::Monomials) = Evaluable[self.arg]
 Base.size(self::Monomials) = (size(self.arg)..., self.padding + self.degree + 1)
 
-codegen(self::Monomials) = __Monomials{self.degree, self.padding}(@MArray zeros(eltype(self), size(self)...))
+codegen(self::Monomials) = __Monomials(self.degree, self.padding, eltype(self), size(self))
 struct __Monomials{D,P,T}
     val :: T
-    __Monomials{D,P}(val) where {D,P} = new{D,P,typeof(val)}(val)
+    function __Monomials(D, P, T, sz)
+        val = @MArray zeros(T, sz...)
+        new{D,P,typeof(val)}(val)
+    end
 end
 @generated function (self::__Monomials{D,P})(_, arg) where {D,P}
     colons = [Colon() for _ in 1:ndims(arg)]
