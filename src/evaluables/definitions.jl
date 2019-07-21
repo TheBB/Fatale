@@ -505,7 +505,9 @@ arguments(self::Power) = Evaluable[self.arg]
 Base.size(self::Power) = size(self.arg)
 
 codegen(self::Power) = __Power(self.exp)
-struct __Power{P} end
+struct __Power{P}
+    __Power(P) = new{P}()
+end
 @inline (::__Power{P})(_, arg) where P = arg .^ P
 
 

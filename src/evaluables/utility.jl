@@ -35,9 +35,16 @@ _unwrap(bc::Base.Broadcast.Broadcasted) = _unwrap(materialize(bc))
 _unwrap(bc::Bcast) = bc.wrapped
 _unwrap(bc::Evaluable) = bc
 _unwrap(bc::Union{AbstractArray,Real}) = Constant(bc)
+_unwrap(bc::Ref) = _unwrap(bc[])
+_unwrap(bc::Val{T}) where T = T
 
 materialize(bc::Bcasted{typeof(+)}) = reduce(Add, map(_unwrap, bc.args))
 materialize(bc::Bcasted{typeof(*)}) = reduce(Multiply, map(_unwrap, bc.args))
+
+function materialize(bc::Bcasted{typeof(Base.literal_pow)})
+    @assert bc.args[1] isa Ref{typeof(^)}
+    Power(_unwrap(bc.args[2]), _unwrap(bc.args[3]))
+end
 
 function materialize(bc::Bcasted{typeof(sqrt)})
     @assert length(bc.args) == 1
