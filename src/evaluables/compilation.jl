@@ -87,26 +87,31 @@ function _istrivial(self)
 end
 
 
-"""
-    (::OptimizedEvaluable)(element, quadpt)
+@inline function (self::OptimizedEvaluable)(element, quadpt::Nothing)
+    self((element=element, point=(point=nothing, grad=nothing)))
+end
 
-Evaluate the optimized evaluable in an evaluation point.
+@inline function (self::OptimizedEvaluable)(element, quadpt::SVector{N,T}) where {N,T}
+    grad = SMatrix{N,N,T}(I)
+    self((element=element, point=(point=quadpt, grad=grad)))
+end
+
+
 """
-@generated function (self::OptimizedEvaluable{Ind,K})(element, quadpt) where {Ind,K}
+    (::OptimizedEvaluable)(evalargs)
+
+Evaluate the optimized evaluable in an evaluation point. The argument
+should be a named tuple of evaluation arguments, containing at least
+*element* and *point*.
+"""
+@generated function (self::OptimizedEvaluable{Ind,K})(evalargs) where {Ind,K}
     nfuncs = length(K.parameters)
     syms = [gensym() for _ in 1:nfuncs]
     argsyms = [[syms[j] for j in tp] for tp in Ind]
 
     codes = Expr[]
-    if quadpt == Nothing
-        push!(codes, :(input = (element=element, point=(point=nothing, grad=nothing))))
-    else
-        N = length(quadpt)
-        push!(codes, :(input = (element=element, point=(point=quadpt, grad=SMatrix{$N,$N,Float64}(I)))))
-    end
-
     for (i, (functype, sym, args)) in enumerate(zip(K.parameters, syms, argsyms))
-        code = :(self.funcs[$i](input, $(args...)))
+        code = :(self.funcs[$i](evalargs, $(args...)))
         push!(codes, :($sym = $code))
     end
 
