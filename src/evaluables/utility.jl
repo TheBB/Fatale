@@ -194,6 +194,8 @@ end
 Contract(left::ArrayEvaluable, right::Zeros, lind::Dims, rind::Dims, target::Dims) =
     Contract(right, left, rind, lind, target)
 
+Inv(self::Constant) = Constant(inv(self.value))
+
 # Multiply: Ensure that constants accumulate on the left, and simplify them there
 Multiply(self::Evaluable) = self
 Multiply(left::Evaluable, right::Evaluable) = Multiply((left, right))
@@ -229,6 +231,16 @@ Multiply(left::Inflate, right::Evaluable) =
 Multiply(left::Evaluable, right::Inflate) =
     Inflate(Multiply(left, right.arg), right.indices, right.newsize, right.axis)
 
+Negate(self::Constant) = Constant(-self.value)
+
+PermuteDims(self::Constant, perm::Dims) = Constant(permutedims(self.value, perm))
+
+Power(self::Constant, exp) = Constant(self.value .^ exp)
+Power(self::Power, exp) = Power(self.arg, self.exp + exp)
+
+Reciprocal(self::Constant) = Constant(1 ./ self.value)
+Reciprocal(self::Reciprocal) = self.arg
+
 Reshape(self::Reshape, args...) = Reshape(self.arg, args...)
 Reshape(self::Constant, args...) = Constant(reshape(self.value, args...))
 function Reshape(self::Inflate, newsize...)
@@ -247,4 +259,4 @@ function Reshape(self::Inflate, newsize...)
     Inflate(reshape(self.arg, newsize...), self.indices, self.newsize, new_infaxis)
 end
 
-PermuteDims(self::Constant, perm::Dims) = Constant(permutedims(self.value, perm))
+Sqrt(self::Constant) = Constant(sqrt.(self.val))
