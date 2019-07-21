@@ -267,34 +267,60 @@ An evaluable returning a view into another array.
 """
 struct GetIndex <: ArrayEvaluable
     arg :: ArrayEvaluable
-    index :: VarTuple{ArrayEvaluable}
+    index :: Tuple
 
-    # At the moment, to simplify, we lower everything to array indices
-    # before compiling
-    function GetIndex(arg, index::ArrayEvaluable...)
-        @assert all(eltype(ix) == Int for ix in index)
-        @assert length(index) == ndims(arg)
-        new(arg, index)
+    function GetIndex(arg, index...)
+        # We lower UnitRanges to constant static arrays, because
+        # they're not type stable to use when indexing static arrays
+        cleaned = map(index) do ix
+            ix isa Union{Int, Colon, ArrayEvaluable} && return ix
+            Constant(ix)
+        end
+        @assert sum(_consumedims, cleaned) == ndims(arg)
+        new(arg, cleaned)
     end
 end
 
-const _IndexTypes = Union{Int, SArray, UnitRange{Int}, Colon, ArrayEvaluable}
-function GetIndex(arg, index::_IndexTypes...)
-    cleaned = map(zip(size(arg), index)) do (sz, ix)
-        ix isa ArrayEvaluable && return ix
-        ix isa Colon && return Constant(1:sz)
-        Constant(ix)
-    end
-    GetIndex(arg, cleaned...)
+_consumedims(::Int) = 1
+_consumedims(::Colon) = 1
+_consumedims(s::ArrayEvaluable) = let t = eltype(s)
+    t == Int && return 1
+    t <: CartesianIndex && return length(t)
+    @assert false
 end
 
-arguments(self::GetIndex) = Evaluable[self.arg, self.index...]
-Base.size(self::GetIndex) = Tuple(flatten(size(ix) for ix in self.index))
+_producesize(::Int, _) = ()
+_producesize(::Colon, d) = (d,)
+_producesize(s, _) = size(s)
 
-codegen(self::GetIndex) = __GetIndex()
-struct __GetIndex end
-@generated function (self::__GetIndex)(_, arg, indices...)
-    inds = [:(indices[$i]) for i in 1:length(indices)]
+arguments(self::GetIndex) = Evaluable[
+    self.arg,
+    Iterators.filter(x->x isa ArrayEvaluable, self.index)...
+]
+Base.eltype(self::GetIndex) = eltype(self.arg)
+
+function Base.size(self::GetIndex)
+    sz = collect(Int, size(self.arg))
+    ret = Int[]
+    for ix in self.index
+        push!(ret, _producesize(ix, sz[1])...)
+        sz = sz[_consumedims(ix)+1:end]
+    end
+    Tuple(ret)
+end
+
+function codegen(self::GetIndex)
+    res = Tuple((i,ix) for (i,ix) in enumerate(self.index) if !(ix isa ArrayEvaluable))
+    __GetIndex(res)
+end
+struct __GetIndex{I}
+    __GetIndex(I) = new{I}()
+end
+@generated function (self::__GetIndex{I})(_, arg, indices...) where I
+    inds = Any[:(indices[$i]) for i in 1:length(indices)]
+    for (ix, obj) in I
+        insert!(inds, ix, obj)
+    end
     quote
         @_inline_meta
         @inbounds arg[$(inds...)]

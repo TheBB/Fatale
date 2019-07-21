@@ -75,16 +75,16 @@ end
     include("Elements.jl")
 end
 
-@testset "Domains" begin
-    include("Domains.jl")
-end
-
 @testset "Evaluables" begin
     include("Evaluables.jl")
 end
 
 @testset "Simplification" begin
     include("Simplification.jl")
+end
+
+@testset "Domains" begin
+    include("Domains.jl")
 end
 
 @testset "Gradients" begin
