@@ -13,13 +13,6 @@ flushleft(arg::Evaluable, reference) = flushleft(arg, ndims(reference))
 flushright(arg::Evaluable, totdims::Int) = insertaxis(arg; left=totdims-ndims(arg))
 flushright(arg::Evaluable, reference) = flushright(arg, ndims(reference))
 
-_checksize(_, ::Type{Int}) = nothing
-_checksize(_, ::Type{Base.Slice{SOneTo{s}}}) where s = s
-
-function Base.size(::Type{<:SubArray{T,N,<:StaticArray{S},I}}) where {T,N,S,I}
-    Tuple(filter(!isnothing, map(_checksize, S.parameters, I.parameters)))
-end
-
 
 # ==============================================================================
 # Broadcasting
