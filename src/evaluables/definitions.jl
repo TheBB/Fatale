@@ -450,6 +450,25 @@ struct __Negate end
 
 
 """
+    OneTo(stop)
+
+Return a SOneTo object.
+"""
+struct OneTo <: ArrayEvaluable
+    stop :: Int
+end
+
+Base.eltype(::OneTo) = Int
+Base.size(self::OneTo) = (self.stop,)
+
+codegen(self::OneTo) = __OneTo(self.stop)
+struct __OneTo{S}
+    __OneTo(S) = new{S}()
+end
+@inline (::__OneTo{S})(_) where S = SOneTo(S)
+
+
+"""
     PermuteDims(arg, perm)
 
 Permute dimensions of *arg*.
@@ -625,6 +644,26 @@ end
 
     :(@inbounds SArray{Tuple{$(S...)}}($(sums...)))
 end
+
+
+"""
+    FUnitRange(start, stop)
+
+An evaluable returning a SUnitRange object.
+"""
+struct FUnitRange <: ArrayEvaluable
+    start :: Int
+    stop :: Int
+end
+
+Base.eltype(self::FUnitRange) = Int
+Base.size(self::FUnitRange) = (self.stop - self.start + 1,)
+
+codegen(self::FUnitRange) = __FUnitRange(self.start, self.stop)
+struct __FUnitRange{S,E}
+    __FUnitRange(S,E) = new{S,E}()
+end
+@inline (::__FUnitRange{S,E})(_) where {S,E}  = SUnitRange(S,E)
 
 
 """

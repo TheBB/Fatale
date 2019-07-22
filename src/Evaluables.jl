@@ -8,6 +8,7 @@ using LinearAlgebra
 using StaticArrays
 using UnsafeArrays
 using SparseArrays
+import SparseArrays: SOneTo, SUnitRange
 
 using ..Elements
 using ..Transforms
