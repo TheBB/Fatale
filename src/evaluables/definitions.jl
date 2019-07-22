@@ -270,28 +270,17 @@ struct GetIndex <: ArrayEvaluable
     index :: Tuple
 
     function GetIndex(arg, index...)
-        # We lower UnitRanges to constant static arrays, because
-        # they're not type stable to use when indexing static arrays
-        cleaned = map(index) do ix
-            ix isa Union{Int, Colon, ArrayEvaluable} && return ix
-            Constant(ix)
-        end
+        cleaned = map(asevaluable, index, size(arg))
         @assert sum(_consumedims, cleaned) == ndims(arg)
         new(arg, cleaned)
     end
 end
 
-_consumedims(::Int) = 1
-_consumedims(::Colon) = 1
 _consumedims(s::ArrayEvaluable) = let t = eltype(s)
-    t == Int && return 1
+    t <: Integer && return 1
     t <: CartesianIndex && return length(t)
     @assert false
 end
-
-_producesize(::Int, _) = ()
-_producesize(::Colon, d) = (d,)
-_producesize(s, _) = size(s)
 
 arguments(self::GetIndex) = Evaluable[
     self.arg,
@@ -303,24 +292,16 @@ function Base.size(self::GetIndex)
     sz = collect(Int, size(self.arg))
     ret = Int[]
     for ix in self.index
-        push!(ret, _producesize(ix, sz[1])...)
+        push!(ret, size(ix)...)
         sz = sz[_consumedims(ix)+1:end]
     end
     Tuple(ret)
 end
 
-function codegen(self::GetIndex)
-    res = Tuple((i,ix) for (i,ix) in enumerate(self.index) if !(ix isa ArrayEvaluable))
-    __GetIndex(res)
-end
-struct __GetIndex{I}
-    __GetIndex(I) = new{I}()
-end
-@generated function (self::__GetIndex{I})(_, arg, indices...) where I
-    inds = Any[:(indices[$i]) for i in 1:length(indices)]
-    for (ix, obj) in I
-        insert!(inds, ix, obj)
-    end
+codegen(self::GetIndex) = __GetIndex()
+struct __GetIndex end
+@generated function (self::__GetIndex)(_, arg, indices...)
+    inds = Expr[:(indices[$i]) for i in 1:length(indices)]
     quote
         @_inline_meta
         @inbounds arg[$(inds...)]

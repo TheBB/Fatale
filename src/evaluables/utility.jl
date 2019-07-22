@@ -13,6 +13,17 @@ flushleft(arg::Evaluable, reference) = flushleft(arg, ndims(reference))
 flushright(arg::Evaluable, totdims::Int) = insertaxis(arg; left=totdims-ndims(arg))
 flushright(arg::Evaluable, reference) = flushright(arg, ndims(reference))
 
+asevaluable(self::Evaluable, _) = self
+asevaluable(self::AbstractArray, _) = Constant(self)
+asevaluable(self::Real, _) = Constant(self)
+asevaluable(self::UnitRange, _) = self.start == 1 ? OneTo(self.stop) : FUnitRange(self.start, self.stop)
+asevaluable(self::OneTo, _) = OneTo(self.stop)
+asevaluable(self::Colon, len) = OneTo(len)
+
+Base.convert(::Type{Evaluable}, x) = asevaluable(x, nothing)
+Base.convert(::Type{Evaluable}, x::Evaluable) = x
+Base.convert(::Type{Evaluable}, ::Colon) = error("length must be specified to transform Colon to Evaluable")
+
 
 # ==============================================================================
 # Broadcasting
