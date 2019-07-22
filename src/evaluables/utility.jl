@@ -20,6 +20,14 @@ asevaluable(self::UnitRange, _) = self.start == 1 ? OneTo(self.stop) : FUnitRang
 asevaluable(self::OneTo, _) = OneTo(self.stop)
 asevaluable(self::Colon, len) = OneTo(len)
 
+function asevaluable(self::OptimizedBlockEvaluable, _)
+    ret = self.data
+    for (axis, index, newsize) in enumerate(zip(self.indices, size(self)))
+        ret = Inflate(ret, index, newsize, axis)
+    end
+    ret
+end
+
 Base.convert(::Type{Evaluable}, x) = asevaluable(x, nothing)
 Base.convert(::Type{Evaluable}, x::Evaluable) = x
 Base.convert(::Type{Evaluable}, ::Colon) = error("length must be specified to transform Colon to Evaluable")

@@ -72,10 +72,10 @@ blocks(self::ArrayEvaluable) = [(
 )]
 
 
+include("evaluables/compilation.jl")
 include("evaluables/definitions.jl")
 include("evaluables/utility.jl")
 include("evaluables/gradients.jl")
-include("evaluables/compilation.jl")
 
 
 Base.show(io::IO, self::Evaluable) = print(io, string(typeof(self).name.name), typerepr(self))
