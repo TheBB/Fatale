@@ -128,7 +128,7 @@ struct TensorElement{D} <: AbstractElement{D}
     index :: NTuple{D, Int}
 end
 
-@inline Elements.globtrans(self::TensorElement{D}) where D = shift(SVector{D,Float64}(self.index) - 1.0)
+@inline Elements.globtrans(self::TensorElement{D}) where D = shift(SVector{D,Float64}(self.index) .- 1.0)
 @inline Elements.index(self::TensorElement) = SVector(self.index)
 Elements.reference(::Type{TensorElement{D}}) where D = TensorReference(SimplexReference{1}(), D)
 Elements.reference(::Type{<:SubElement{D,T,<:TensorElement}}) where {D,T} = TensorReference(SimplexReference{1}(), D)
