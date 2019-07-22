@@ -154,7 +154,7 @@ struct Add <: ArrayEvaluable
     function Add(args::VarTuple{ArrayEvaluable})
         length(args) == 1 && return args[1]
         # Simplification: constants should accumulate on the left
-        @assert all(!(arg isa Constant) for arg in args[2:end])
+        @assert all(!(arg isa AbstractConstant) for arg in args[2:end])
         dims = broadcast_shape(map(size, args)...)
         new(collect(Evaluable, args), dims)
     end
@@ -245,13 +245,14 @@ _sizedict(args, inds) = OrderedDict(flatten(
 
 An evaluable returning the constant object *v*.
 """
-struct Constant <: ArrayEvaluable
+struct Constant <: AbstractConstant
     value :: SArray
 end
 
 Base.eltype(self::Constant) = eltype(self.value)
 Base.ndims(self::Constant) = ndims(self.value)
 Base.size(self::Constant) = size(self.value)
+valueof(self::Constant) = self.value
 
 codegen(self::Constant) = __Constant(self.value)
 struct __Constant{T}
@@ -394,7 +395,7 @@ struct Multiply <: ArrayEvaluable
     function Multiply(args::VarTuple{ArrayEvaluable})
         length(args) == 1 && return args[1]
         # Simplification: constants should accumulate on the left
-        @assert all(!(arg isa Constant) for arg in args[2:end])
+        @assert all(!(arg isa AbstractConstant) for arg in args[2:end])
         dims = broadcast_shape(map(size, args)...)
         new(collect(Evaluable, args), dims)
     end
@@ -435,12 +436,13 @@ struct __Negate end
 
 Return a SOneTo object.
 """
-struct OneTo <: ArrayEvaluable
+struct OneTo <: AbstractConstant
     stop :: Int
 end
 
 Base.eltype(::OneTo) = Int
 Base.size(self::OneTo) = (self.stop,)
+valueof(self::OneTo) = SOneTo(self.stop)
 
 codegen(self::OneTo) = __OneTo{self.stop}()
 struct __OneTo{S} end
@@ -625,13 +627,14 @@ end
 
 An evaluable returning a SUnitRange object.
 """
-struct FUnitRange <: ArrayEvaluable
+struct FUnitRange <: AbstractConstant
     start :: Int
     stop :: Int
 end
 
 Base.eltype(self::FUnitRange) = Int
 Base.size(self::FUnitRange) = (self.stop - self.start + 1,)
+valueof(self::FUnitRange) = SUnitRange(self.start, self.stop)
 
 codegen(self::FUnitRange) = __FUnitRange{self.start, self.stop}()
 struct __FUnitRange{S,E} end

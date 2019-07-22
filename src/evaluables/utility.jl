@@ -44,10 +44,9 @@ const Bcasted{T} = Base.Broadcast.Broadcasted{BStyle, Nothing, T}
 
 _unwrap(bc::Base.Broadcast.Broadcasted) = _unwrap(materialize(bc))
 _unwrap(bc::Bcast) = bc.wrapped
-_unwrap(bc::Evaluable) = bc
-_unwrap(bc::Union{AbstractArray,Real}) = Constant(bc)
 _unwrap(bc::Ref) = _unwrap(bc[])
 _unwrap(bc::Val{T}) where T = T
+_unwrap(bc) = convert(Evaluable, bc)
 
 materialize(bc::Bcasted{typeof(+)}) = reduce(Add, map(_unwrap, bc.args))
 materialize(bc::Bcasted{typeof(*)}) = reduce(Multiply, map(_unwrap, bc.args))
@@ -119,8 +118,8 @@ Base.permutedims(self::ArrayEvaluable, perm) = PermuteDims(self, perm)
 Base.sum(self::Evaluable; dims=:, collapse=false) = Sum(self, dims, collapse)
 
 LinearAlgebra.dot(left::ArrayEvaluable, right::ArrayEvaluable) = sum(left .* right; collapse=true)
-LinearAlgebra.dot(left::ArrayEvaluable, right) = sum(left .* Constant(right); collapse=true)
-LinearAlgebra.dot(left, right::ArrayEvaluable) = sum(Constant(left) .* right; collapse=true)
+LinearAlgebra.dot(left::ArrayEvaluable, right) = sum(left .* convert(Evaluable, right); collapse=true)
+LinearAlgebra.dot(left, right::ArrayEvaluable) = sum(convert(Evaluable, left) .* right; collapse=true)
 
 LinearAlgebra.normalize(vec) = vec ./ norm(vec, 2)
 
@@ -165,26 +164,26 @@ end
 # Add: Ensure that constants accumulate on the left, and simplify them there
 Add(self::Evaluable) = self
 Add(left::Evaluable, right::Evaluable) = Add((left, right))
-Add(left::Evaluable, right) = Add((Constant(right), left))
-Add(left, right::Evaluable) = Add((Constant(left), right))
-Add(left::Evaluable, right::Constant) = Add((right, left))
-Add(left::Constant, right::Constant) = Constant(left.value .+ right.value)
+Add(left::Evaluable, right) = Add((convert(Evaluable, right), left))
+Add(left, right::Evaluable) = Add((convert(Evaluable, left), right))
+Add(left::Evaluable, right::AbstractConstant) = Add((right, left))
+Add(left::AbstractConstant, right::AbstractConstant) = convert(Evaluable, valueof(left) .+ valueof(right))
 Add(left::Add, right::Evaluable) = Add((left.args..., right))
 Add(left::Evaluable, right::Add) = Add((right.args..., left))
-Add(left::Constant, right::Add) = Add(right, left)
+Add(left::AbstractConstant, right::Add) = Add(right, left)
 
-function Add(left::Add, right::Constant)
-    if left.args[1] isa Constant
-        return Add((left.args[1] .+ right, left.args[2:end]...))
+function Add(left::Add, right::AbstractConstant)
+    if left.args[1] isa AbstractConstant
+        return Add(left.args[1] .+ right, left.args[2:end]...)
     end
     Add((right, left.args...))
 end
 
 function Add(left::Add, right::Add)
-    if left.args[1] isa Constant && right.args[1] isa Constant
+    if left.args[1] isa AbstractConstant && right.args[1] isa AbstractConstant
         return Add((left.args[1] .+ right.args[1], left.args[2:end]..., right.args[2:end]...))
     end
-    if right.args[1] isa Constant
+    if right.args[1] isa AbstractConstant
         return Add((right.args[1], left.args..., right.args[2:end]...))
     end
     Add((left.args..., right.args...))
@@ -215,26 +214,26 @@ end
 # Multiply: Ensure that constants accumulate on the left, and simplify them there
 Multiply(self::Evaluable) = self
 Multiply(left::Evaluable, right::Evaluable) = Multiply((left, right))
-Multiply(left::Evaluable, right) = Multiply((Constant(right), left))
-Multiply(left, right::Evaluable) = Multiply((Constant(left), right))
+Multiply(left::Evaluable, right) = Multiply((convert(Evaluable, right), left))
+Multiply(left, right::Evaluable) = Multiply((convert(Evaluable, left), right))
 Multiply(left::Evaluable, right::Constant) = Multiply((right, left))
-Multiply(left::Constant, right::Constant) = Constant(left.value .* right.value)
+Multiply(left::Constant, right::Constant) = convert(Evaluable, valueof(left) .* valueof(right))
 Multiply(left::Multiply, right::Evaluable) = Multiply((left.args..., right))
 Multiply(left::Evaluable, right::Multiply) = Multiply((right.args..., left))
-Multiply(left::Constant, right::Multiply) = Multiply(right, left)
+Multiply(left::AbstractConstant, right::Multiply) = Multiply(right, left)
 
 function Multiply(left::Multiply, right::Constant)
-    if left.args[1] isa Constant
+    if left.args[1] isa AbstractConstant
         return Multiply((left.args[1] .* right, left.args[2:end]...))
     end
     Multiply((right, left.args...))
 end
 
 function Multiply(left::Multiply, right::Multiply)
-    if left.args[1] isa Constant && right.args[1] isa Constant
+    if left.args[1] isa AbstractConstant && right.args[1] isa AbstractConstant
         return Multiply((left.args[1] .* right.args[1], left.args[2:end]..., right.args[2:end]...))
     end
-    if right.args[1] isa Constant
+    if right.args[1] isa AbstractConstant
         return Multiply((right.args[1], left.args..., right.args[2:end]...))
     end
     Multiply(left.args..., right.args...)
@@ -247,18 +246,19 @@ Multiply(left::Inflate, right::Evaluable) =
 Multiply(left::Evaluable, right::Inflate) =
     Inflate(Multiply(left, right.arg), right.indices, right.newsize, right.axis)
 
-Negate(self::Constant) = Constant(-self.value)
+Negate(self::AbstractConstant) = convert(Evaluable, -valueof(self))
 
-PermuteDims(self::Constant, perm::Dims) = Constant(permutedims(self.value, perm))
+PermuteDims(self::AbstractConstant, perm::Dims) = convert(Evaluable, permutedims(valueof(self), perm))
 
-Power(self::Constant, exp) = Constant(self.value .^ exp)
+Power(self::AbstractConstant, exp) = convert(Evaluable, valueof(self) .^ exp)
 Power(self::Power, exp) = Power(self.arg, self.exp + exp)
 
-Reciprocal(self::Constant) = Constant(1 ./ self.value)
+Reciprocal(self::AbstractConstant) = convert(Evaluable, 1 ./ valueof(self))
 Reciprocal(self::Reciprocal) = self.arg
 
 Reshape(self::Reshape, args...) = Reshape(self.arg, args...)
-Reshape(self::Constant, args...) = Constant(reshape(self.value, args...))
+Reshape(self::AbstractConstant, args...) = convert(Evaluable, reshape(valueof(self), args...))
+
 function Reshape(self::Inflate, newsize...)
     infaxis = self.axis
     newsize = collect(Int, newsize)
@@ -275,4 +275,4 @@ function Reshape(self::Inflate, newsize...)
     Inflate(reshape(self.arg, newsize...), self.indices, self.newsize, new_infaxis)
 end
 
-Sqrt(self::Constant) = Constant(sqrt.(self.val))
+Sqrt(self::AbstractConstant) = convert(Evaluable, sqrt.(valueof(self)))

@@ -46,12 +46,17 @@ Base.ndims(self::ArrayEvaluable) = length(size(self))
 Base.length(self::ArrayEvaluable) = prod(size(self))
 
 Base.firstindex(self::ArrayEvaluable) = ntuple(_->1, ndims(self))
-Base.firstindex(self::ArrayEvaluable, i) = 1
+Base.firstindex(::ArrayEvaluable, i) = 1
 Base.lastindex(self::ArrayEvaluable) = size(self)
 Base.lastindex(self::ArrayEvaluable, i) = size(self, i)
 
 # Evaluables of type Coords should also implement ndims, but it's not known in all cases
 Base.ndims(::Evaluable{_Coords}) = "?"
+
+
+# Supertype for all evaluables with constant value
+abstract type AbstractConstant <: ArrayEvaluable end
+valueof(::AbstractConstant) = throw("not implemented")
 
 
 """
