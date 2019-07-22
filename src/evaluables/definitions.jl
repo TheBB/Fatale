@@ -45,7 +45,7 @@ Base.eltype(self::ElementData{_Array}) = self.eltype
 codegen(self::ElementData) = __ElementData{self.name}(self.args)
 struct __ElementData{V,T}
     args :: T
-    __ElementData{V}(args) where V = new{V,typeof(args)}(args)
+    __ElementData{V}(args::T) where {V,T} = new{V,T}(args)
 end
 @inline (self::__ElementData{V})(input) where V = elementdata(input.element, Val(V), self.args...)
 
@@ -208,7 +208,7 @@ codegen(self::Contract) = __Contract{self.indices, self.target}(
 )
 struct __Contract{I,Ti,T}
     val :: T
-    __Contract{I,Ti}(val) where {I,Ti} = new{I,Ti,typeof(val)}(val)
+    __Contract{I,Ti}(val::T) where {I,Ti,T} = new{I,Ti,T}(val)
 end
 @generated function (self::__Contract{I,Ti})(_, args...) where {I,Ti}
     dims = _sizedict(args, I)
@@ -442,10 +442,8 @@ end
 Base.eltype(::OneTo) = Int
 Base.size(self::OneTo) = (self.stop,)
 
-codegen(self::OneTo) = __OneTo(self.stop)
-struct __OneTo{S}
-    __OneTo(S) = new{S}()
-end
+codegen(self::OneTo) = __OneTo{self.stop}()
+struct __OneTo{S} end
 @inline (::__OneTo{S})(_) where S = SOneTo(S)
 
 
@@ -468,10 +466,8 @@ end
 arguments(self::PermuteDims) = Evaluable[self.arg]
 Base.size(self::PermuteDims) = Tuple(size(self.arg, i) for i in self.perm)
 
-codegen(self::PermuteDims) = __PermuteDims(self.perm)
-struct __PermuteDims{I}
-    __PermuteDims(I) = new{I}()
-end
+codegen(self::PermuteDims) = __PermuteDims{self.perm}()
+struct __PermuteDims{I} end
 @generated function (::__PermuteDims{I})(_, arg) where I
     insize = size(arg)
     outsize = Tuple(size(arg, i) for i in I)
@@ -507,10 +503,8 @@ end
 arguments(self::Power) = Evaluable[self.arg]
 Base.size(self::Power) = size(self.arg)
 
-codegen(self::Power) = __Power(self.exp)
-struct __Power{P}
-    __Power(P) = new{P}()
-end
+codegen(self::Power) = __Power{self.exp}()
+struct __Power{P} end
 @inline (::__Power{P})(_, arg) where P = arg .^ P
 
 
@@ -526,9 +520,10 @@ end
 arguments(self::Reciprocal) = Evaluable[self.arg]
 Base.size(self::Reciprocal) = size(self.arg)
 
-codegen(self::Reciprocal) = __Sqrt()
+codegen(self::Reciprocal) = __Reciprocal()
 struct __Reciprocal end
-@inline (::__Reciprocal)(_, arg) = 1 ./ arg
+@inline (::__Reciprocal)(_, arg::Scalar) = Scalar(one(eltype(arg)) / arg[])
+@inline (::__Reciprocal)(_, arg) = one(eltype(arg)) ./ arg
 
 
 """
@@ -545,10 +540,8 @@ end
 arguments(self::Reshape) = Evaluable[self.arg]
 Base.size(self::Reshape) = self.shape
 
-codegen(self::Reshape) = __Reshape(size(self))
-struct __Reshape{S}
-    __Reshape(size) = new{size}()
-end
+codegen(self::Reshape) = __Reshape{size(self)}()
+struct __Reshape{S} end
 @generated (self::__Reshape{S})(_, arg) where S = quote
     @_inline_meta
     SArray{Tuple{$(S...)}}(arg)
@@ -640,10 +633,8 @@ end
 Base.eltype(self::FUnitRange) = Int
 Base.size(self::FUnitRange) = (self.stop - self.start + 1,)
 
-codegen(self::FUnitRange) = __FUnitRange(self.start, self.stop)
-struct __FUnitRange{S,E}
-    __FUnitRange(S,E) = new{S,E}()
-end
+codegen(self::FUnitRange) = __FUnitRange{self.start, self.stop}()
+struct __FUnitRange{S,E} end
 @inline (::__FUnitRange{S,E})(_) where {S,E}  = SUnitRange(S,E)
 
 
@@ -662,9 +653,6 @@ Zeros(dims::Int...) = Zeros(Float64, dims...)
 Base.eltype(self::Zeros) = self.eltype
 Base.size(self::Zeros) = self.dims
 
-codegen(self::Zeros) = __Zeros(@SArray zeros(self.eltype, self.dims...))
-struct __Zeros{T}
-    val :: T
-    __Zeros(val) = new{typeof(val)}(val)
-end
-@inline (self::__Zeros)(_) = self.val
+codegen(self::Zeros) = __Zeros{SArray{Tuple{size(self)...}, eltype(self), ndims(self), length(self)}}()
+struct __Zeros{T} end
+@inline (self::__Zeros{T})(_) where T = zero(T)
