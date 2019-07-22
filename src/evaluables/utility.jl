@@ -224,13 +224,13 @@ Multiply(self::Evaluable) = self
 Multiply(left::Evaluable, right::Evaluable) = Multiply((left, right))
 Multiply(left::Evaluable, right) = Multiply((convert(Evaluable, right), left))
 Multiply(left, right::Evaluable) = Multiply((convert(Evaluable, left), right))
-Multiply(left::Evaluable, right::Constant) = Multiply((right, left))
-Multiply(left::Constant, right::Constant) = convert(Evaluable, valueof(left) .* valueof(right))
+Multiply(left::Evaluable, right::AbstractConstant) = Multiply((right, left))
+Multiply(left::AbstractConstant, right::AbstractConstant) = convert(Evaluable, valueof(left) .* valueof(right))
 Multiply(left::Multiply, right::Evaluable) = Multiply((left.args..., right))
 Multiply(left::Evaluable, right::Multiply) = Multiply((right.args..., left))
 Multiply(left::AbstractConstant, right::Multiply) = Multiply(right, left)
 
-function Multiply(left::Multiply, right::Constant)
+function Multiply(left::Multiply, right::AbstractConstant)
     if left.args[1] isa AbstractConstant
         return Multiply((left.args[1] .* right, left.args[2:end]...))
     end
