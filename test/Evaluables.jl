@@ -237,6 +237,16 @@ end
 end
 
 
+@testset "OneTo" begin
+    func = optimize(Evaluables.OneTo(9))
+    @test func(nothing, nothing) == SOneTo(9)
+
+    @noallocs begin
+        @bench $func(nothing, nothing)
+    end
+end
+
+
 @testset "PermuteDims" begin
     Random.seed!(201907181354)
     data = @SArray rand(3,5,7)
@@ -244,6 +254,32 @@ end
     func = optimize(permutedims(DummyConstant(data), (2, 1, 3)))
     @test size(func) == (5, 3, 7)
     @test func(nothing, nothing) == permutedims(data, (2, 1, 3))
+
+    @noallocs begin
+        @bench $func(nothing, nothing)
+    end
+end
+
+
+@testset "Power" begin
+    Random.seed!(201907231411)
+    data = @SArray rand(3,5,7)
+
+    func = optimize(DummyConstant(data) .^ 3.1)
+    @test func(nothing, nothing) ≈ data .^ 3.1
+
+    @noallocs begin
+        @bench $func(nothing, nothing)
+    end
+end
+
+
+@testset "Reciprocal" begin
+    Random.seed!(201907231420)
+    data = @SArray rand(3,5,7)
+
+    func = optimize(Evaluables.Reciprocal(DummyConstant(data)))
+    @test func(nothing, nothing) ≈ 1 ./ data
 
     @noallocs begin
         @bench $func(nothing, nothing)
@@ -266,6 +302,19 @@ end
 
     @noallocs begin
         func = optimize(reshape(DummyConstant(arr), 3, 7, 5))
+        @bench $func(nothing, nothing)
+    end
+end
+
+
+@testset "Sqrt" begin
+    Random.seed!(201907231424)
+    data = @SArray rand(3,5,7)
+
+    func = optimize(Evaluables.Sqrt(DummyConstant(data)))
+    @test func(nothing, nothing) ≈ sqrt.(data)
+
+    @noallocs begin
         @bench $func(nothing, nothing)
     end
 end

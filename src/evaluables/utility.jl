@@ -59,8 +59,14 @@ _unwrap(bc) = convert(Evaluable, bc)
 materialize(bc::Bcasted{typeof(+)}) = reduce(Add, map(_unwrap, bc.args))
 materialize(bc::Bcasted{typeof(*)}) = reduce(Multiply, map(_unwrap, bc.args))
 
+function materialize(bc::Bcasted{typeof(^)})
+    @assert length(bc.args) == 2
+    Power(_unwrap(bc.args[1]), bc.args[2])
+end
+
 function materialize(bc::Bcasted{typeof(Base.literal_pow)})
     @assert bc.args[1] isa Ref{typeof(^)}
+    @assert length(bc.args) == 3
     Power(_unwrap(bc.args[2]), _unwrap(bc.args[3]))
 end
 

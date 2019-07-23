@@ -3,7 +3,7 @@ using LinearAlgebra
 using Random
 using SparseArrays
 using Test
-import StaticArrays: Scalar, SVector, SMatrix, SArray, @SVector, @SMatrix, @SArray
+import StaticArrays: Scalar, SVector, SMatrix, SArray, @SVector, @SMatrix, @SArray, SOneTo
 
 using Fatale.Transforms
 using Fatale.Elements
