@@ -96,7 +96,7 @@ end
 _istrivial(self::OptimizedBlockEvaluable) = false
 function _istrivial(self)
     all(enumerate(self.indices)) do (i, ind)
-        ind isa Constant && ind.value == 1:size(self.data, i)
+        ind isa AbstractConstant && valueof(ind) == 1:size(self.data, i)
     end
 end
 
