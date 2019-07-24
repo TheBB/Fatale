@@ -37,6 +37,7 @@ arguments(::Evaluable) = Evaluable[]
 
 # Some type aliases that will be useful
 const ArrayEvaluable = Evaluable{_Array}
+const CoordsEvaluable = Evaluable{_Coords}
 const VarTuple{K} = Tuple{Vararg{K}}
 
 # Default implementations for array interface
@@ -50,8 +51,9 @@ Base.firstindex(::ArrayEvaluable, i) = 1
 Base.lastindex(self::ArrayEvaluable) = size(self)
 Base.lastindex(self::ArrayEvaluable, i) = size(self, i)
 
-# Evaluables of type Coords should also implement ndims, but it's not known in all cases
-Base.ndims(::Evaluable{_Coords}) = "?"
+
+Base.eltype(::CoordsEvaluable) = throw("not implemented")
+Base.ndims(::CoordsEvaluable) = throw("not implemented")
 
 
 # Supertype for all evaluables with constant value

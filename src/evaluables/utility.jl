@@ -152,11 +152,11 @@ local_transform() = ElementData{_Transform}(:loctrans)
 global_transform() = ElementData{_Transform}(:globtrans)
 element_index(n) = ElementData{_Array}(:index; size=(n,), eltype=Int)
 
-local_coords(n) = Argument{_Coords}(:point; ndims=n, eltype=Float64)
+local_coords(n) = CoordsArgument(:point, Float64, n)
 local_point(n) = GetProperty(local_coords(n), :point)
 local_grad(n) = GetProperty(local_coords(n), :grad)
 
-global_coords(n) = ApplyTrans(global_transform(), local_coords(n), n)
+global_coords(n) = ApplyTrans(global_transform(), local_coords(n))
 global_point(n) = GetProperty(global_coords(n), :point)
 global_grad(n) = GetProperty(global_coords(n), :grad)
 

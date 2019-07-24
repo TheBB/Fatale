@@ -24,6 +24,17 @@ struct __Argument{V} end
 end
 
 
+struct CoordsArgument <: CoordsEvaluable
+    name :: Symbol
+    eltype :: DataType
+    ndims :: Int
+end
+Base.eltype(self::CoordsArgument) = self.eltype
+Base.ndims(self::CoordsArgument) = self.ndims
+codegen(self::CoordsArgument) = __Argument{self.name}()
+
+
+
 """
     ElementData{T}(args...)
 
@@ -60,22 +71,18 @@ end
 
 
 """
-    ApplyTrans(trans, point, N, T=Float64)
+    ApplyTrans(trans, coords)
 
-Apply `trans` to `point`, producing an N-dimensional coordinate of
-element type T.
+Apply `trans` to `coords`.
 """
-struct ApplyTrans <: Evaluable{_Coords}
+struct ApplyTrans <: CoordsEvaluable
     transform :: Evaluable{_Transform}
-    coords :: Evaluable{_Coords}
-    ndims :: Int
-    eltype :: DataType
+    coords :: CoordsEvaluable
 end
 
-ApplyTrans(transform, coords, ndims) = ApplyTrans(transform, coords, ndims, Float64)
+Base.eltype(self::ApplyTrans) = eltype(self.coords)
+Base.ndims(self::ApplyTrans) = ndims(self.coords)
 arguments(self::ApplyTrans) = Evaluable[self.transform, self.coords]
-Base.eltype(self::ApplyTrans) = self.eltype
-Base.ndims(self::ApplyTrans) = self.ndims
 
 codegen(self::ApplyTrans) = __ApplyTrans()
 struct __ApplyTrans end
