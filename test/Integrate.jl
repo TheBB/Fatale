@@ -2,7 +2,7 @@
     domain = TensorDomain(10)
     basis = global_basis(domain, Lagrange, 1)
 
-    res = integrate(optimize(basis), domain, quadrule(domain, 1))
+    res = integrate(basis, domain, quadrule(domain, 1))
     @test res == [1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 1] ./ 2
 end
 
@@ -12,7 +12,7 @@ end
     basis = global_basis(domain, Lagrange, 1)
     mass = exterior(basis)
 
-    res = integrate(optimize(mass), domain, quadrule(domain, 2))
+    res = integrate(mass, domain, quadrule(domain, 2))
     @test nnz(res) == 7
     (I, J, V) = findnz(res)
     @test I == [1, 2, 1, 2, 3, 2, 3]
@@ -26,7 +26,7 @@ end
     basis = global_basis(domain, Lagrange, 1)
     mass = exterior(basis)
 
-    res = integrate(optimize(mass), domain, quadrule(domain, 3))
+    res = integrate(mass, domain, quadrule(domain, 3))
     @test nnz(res) == 49
     (I, J, V) = findnz(res)
     @test I == [1, 2, 4, 5, 1, 2, 3, 4, 5, 6, 2, 3, 5, 6, 1, 2, 4, 5, 7, 8, 1, 2, 3, 4,

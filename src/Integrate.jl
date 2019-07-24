@@ -1,6 +1,8 @@
 module Integrate
 
-import ..Evaluables: OptimizedEvaluable, OptimizedBlockEvaluable, OptimizedSparseEvaluable
+import ..Evaluables:
+    OptimizedEvaluable, OptimizedBlockEvaluable, OptimizedSparseEvaluable,
+    ArrayEvaluable, optimize
 
 import Strided: UnsafeStridedView, sreshape
 import SparseArrays: sparse!, dropzeros!, nnz
@@ -20,6 +22,9 @@ function _sparse!(I, J, V, m, n)
     resize!(A.colptr, n+1)
     dropzeros!(A)
 end
+
+
+integrate(func::ArrayEvaluable, domain, quadrule) = integrate(optimize(func), domain, quadrule)
 
 
 function integrate(func::OptimizedEvaluable, domain, quadrule)
