@@ -46,14 +46,14 @@ codegen(self::OptimizedEvaluable) = self
 # A block is a dense array (an OptimizedEvaluable) together with a
 # tuple of index evaluables, describing the variable placement of the
 # dense array in a sparse superstructure.
-struct OptimizedBlockEvaluable{I, D}
+struct OptimizedBlockEvaluable{N, I, D}
     indices :: I
     data :: D
 
     function OptimizedBlockEvaluable(block)
         indices = Tuple(OptimizedEvaluable(ind) for ind in block.indices)
         data = OptimizedEvaluable(block.data)
-        new{typeof(indices), typeof(data)}(indices, data)
+        new{length(indices), typeof(indices), typeof(data)}(indices, data)
     end
 end
 

@@ -34,6 +34,25 @@ function integrate(func::OptimizedEvaluable, domain, quadrule)
 end
 
 
+function integrate(func::OptimizedSparseEvaluable{T,1}, domain, quadrule) where T
+    V = zeros(T, length(func))
+    for block in func.blocks
+        _integrate(block, domain, quadrule, UnsafeStridedView(V))
+    end
+    V
+end
+
+function _integrate(block::OptimizedBlockEvaluable{1}, domain, quadrule, V)
+    (pts, wts) = quadrule
+    for (i, element) in enumerate(domain)
+        I = block.indices[1](element, nothing)
+        for (pt, wt) in zip(pts, wts)
+            V[I] .+= block.data(element, pt) .* wt
+        end
+    end
+end
+
+
 function integrate(func::OptimizedSparseEvaluable{T,2}, domain, quadrule) where T
     nelems = length(domain)
     nentries = nnz(func)
@@ -57,8 +76,7 @@ function integrate(func::OptimizedSparseEvaluable{T,2}, domain, quadrule) where 
     _sparse!(I, J, V, size(func)...)
 end
 
-
-function _integrate(block::OptimizedBlockEvaluable, domain, quadrule, I, J, V)
+function _integrate(block::OptimizedBlockEvaluable{2}, domain, quadrule, I, J, V)
     (pts, wts) = quadrule
     for (i, element) in enumerate(domain)
         I[:,:,i] .= block.indices[1](element, nothing)

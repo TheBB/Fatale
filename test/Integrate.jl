@@ -1,3 +1,12 @@
+@testset "Lagrange Basis 1D" begin
+    domain = TensorDomain(10)
+    basis = global_basis(domain, Lagrange, 1)
+
+    res = integrate(optimize(basis), domain, quadrule(domain, 1))
+    @test res == [1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 1] ./ 2
+end
+
+
 @testset "Lagrange Mass 1D" begin
     domain = TensorDomain(2)
     basis = global_basis(domain, Lagrange, 1)
