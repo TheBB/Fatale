@@ -81,10 +81,7 @@ arguments(self::ApplyTrans) = Evaluable[self.transform, self.coords]
 
 codegen(self::ApplyTrans) = __ApplyTrans()
 struct __ApplyTrans end
-@inline function (::__ApplyTrans)(trans, point)
-    (point, grad) = trans(point.point, point.grad)
-    (point=point, grad=grad)
-end
+@inline (::__ApplyTrans)(trans, point) = trans(point)
 
 
 """

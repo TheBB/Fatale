@@ -12,6 +12,9 @@ export Empty, Affine
 export shift, updim
 
 
+const Coords{N,T,M} = NamedTuple{(:point, :grad), Tuple{SVector{N,T}, SMatrix{N,N,T,M}}}
+
+
 """
     AbstractTransform{M, N, R}
 
@@ -60,21 +63,12 @@ Base.length(self::Chain) = length(self.chain)
 Base.length(::Type{<:Chain{K}}) where K = length(K.parameters)
 @inline Base.getindex(self::Chain, i::Int) = self.chain[i]
 
-@generated function (self::Chain)(point)
-    codes = [:(point = self[$i](point)) for i in length(self):-1:1]
+@generated function (self::Chain)(x)
+    codes = [:(x = self[$i](x)) for i in length(self):-1:1]
     quote
         @_inline_meta
         $(codes...)
-        point
-    end
-end
-
-@generated function (self::Chain)(point, grad)
-    codes = [:((point, grad) = self[$i](point, grad)) for i in length(self):-1:1]
-    quote
-        @_inline_meta
-        $(codes...)
-        (point, grad)
+        x
     end
 end
 
@@ -90,8 +84,7 @@ struct Empty{D, R} <: AbstractTransform{D, D, R} end
 Empty(D, R) = Empty{D, R}()
 Empty(D) = Empty(D, Float64)
 
-@inline (self::Empty)(point) = point
-@inline (self::Empty)(point, grad) = (point, grad)
+@inline (::Empty)(x) = x
 
 
 """
@@ -110,9 +103,9 @@ struct Affine{F, T, R, L} <: AbstractTransform{F, T, R}
 end
 
 @inline (self::Affine)(point) = self.matrix * point + self.vector
-@inline (self::Affine)(point, grad) = (
-    self.matrix * point + self.vector,
-    _exterior(self.matrix * grad, self.flipped)
+@inline (self::Affine)(x::Coords) = (
+    point = self.matrix * x.point + self.vector,
+    grad = _exterior(self.matrix * x.grad, self.flipped)
 )
 
 @generated function _exterior(matrix, flipped)
