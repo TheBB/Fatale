@@ -79,7 +79,7 @@ end
     include("Evaluables.jl")
 end
 
-@testset "Simplification" begin
+@testset "Simplify" begin
     include("Simplification.jl")
 end
 
