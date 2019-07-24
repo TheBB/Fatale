@@ -10,6 +10,7 @@ using Fatale.Elements
 using Fatale.Evaluables
 using Fatale.Domains
 using Fatale.Integrate
+using Fatale.Solve
 using Fatale.Utils
 
 
@@ -97,4 +98,8 @@ end
 
 @testset "Integrate" begin
     include("Integrate.jl")
+end
+
+@testset "Solve" begin
+    include("Solve.jl")
 end

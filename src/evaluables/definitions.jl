@@ -486,6 +486,7 @@ Base.size(self::Power) = size(self.arg)
 
 codegen(self::Power) = __Power{self.exp}()
 struct __Power{P} end
+@inline (::__Power{P})(arg::Scalar) where P = Scalar(arg[] ^ P)
 @inline (::__Power{P})(arg) where P = arg .^ P
 
 
