@@ -17,10 +17,10 @@ function _linearize!(data, self::Evaluable)
 end
 
 
-abstract type AbstractOptimizedEvaluable{S,T} <: ArrayEvaluable end
+abstract type AbstractOptimizedEvaluable{T,N,S} <: ArrayEvaluable end
 
-Base.eltype(::AbstractOptimizedEvaluable{S,T}) where {S,T} = T
-Base.size(::AbstractOptimizedEvaluable{S}) where S = S
+Base.eltype(::AbstractOptimizedEvaluable{T}) where T = T
+Base.size(::AbstractOptimizedEvaluable{T,N,S}) where {T,N,S} = S
 
 optimize(self::AbstractOptimizedEvaluable) = self
 
@@ -29,14 +29,14 @@ optimize(self::AbstractOptimizedEvaluable) = self
 # I: Tuple of integer tuples, I[k] is the results which form the
 # inputs to evaluable number k
 # K: Tuple of evaluable types
-struct OptimizedEvaluable{I, K, S, T} <: AbstractOptimizedEvaluable{S,T}
+struct OptimizedEvaluable{T,N,S,I,K} <: AbstractOptimizedEvaluable{T,N,S}
     funcs :: K
 
     function OptimizedEvaluable(func)
         sequence = linearize(func)
         callables = Tuple(codegen(stage.func) for stage in sequence)
         inds = Tuple(Tuple(stage.arginds) for stage in sequence)
-        new{inds, typeof(callables), size(func), eltype(func)}(callables)
+        new{eltype(func), ndims(func), size(func), inds, typeof(callables)}(callables)
     end
 end
 
@@ -66,12 +66,12 @@ Base.size(self::OptimizedBlockEvaluable) = size(self.data)
 
 
 # An optimized sparse evaluable is a collection of one or more blocks.
-struct OptimizedSparseEvaluable{K, S, T} <: AbstractOptimizedEvaluable{S,T}
+struct OptimizedSparseEvaluable{T,N,S,K} <: AbstractOptimizedEvaluable{T,N,S}
     blocks :: K
 
     function OptimizedSparseEvaluable(blocks, func)
         arg = Tuple(OptimizedBlockEvaluable(block) for block in blocks)
-        new{typeof(arg), size(func), eltype(func)}(arg)
+        new{eltype(func), ndims(func), size(func), typeof(arg)}(arg)
     end
 end
 
@@ -119,10 +119,10 @@ Evaluate the optimized evaluable in an evaluation point. The argument
 should be a named tuple of evaluation arguments, containing at least
 *element* and *point*.
 """
-@generated function (self::OptimizedEvaluable{Ind,K})(evalargs) where {Ind,K}
+@generated function (self::OptimizedEvaluable{T,N,S,I,K})(evalargs) where {T,N,S,I,K}
     nfuncs = length(K.parameters)
     syms = [gensym() for _ in 1:nfuncs]
-    argsyms = [[syms[j] for j in tp] for tp in Ind]
+    argsyms = [[syms[j] for j in tp] for tp in I]
 
     codes = Expr[]
     for (i, (functype, sym, args)) in enumerate(zip(K.parameters, syms, argsyms))

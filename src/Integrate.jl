@@ -34,14 +34,13 @@ function integrate(func::OptimizedEvaluable, domain, quadrule)
 end
 
 
-function integrate(func::OptimizedSparseEvaluable, domain, quadrule)
-    @assert ndims(func) == 2
+function integrate(func::OptimizedSparseEvaluable{T,2}, domain, quadrule) where T
     nelems = length(domain)
     nentries = nnz(func)
 
     I = Vector{Int}(undef, nentries * nelems)
     J = Vector{Int}(undef, nentries * nelems)
-    V = zeros(eltype(func), nentries * nelems)
+    V = zeros(T, nentries * nelems)
     (pts, wts) = quadrule
 
     i = 1
