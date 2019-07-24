@@ -24,6 +24,7 @@ struct _Coords <: Result end
 struct _Array <: Result end
 struct _Element <: Result end
 struct _Transform <: Result end
+struct _Any <: Result end
 
 
 """
@@ -82,8 +83,9 @@ include("evaluables/gradients.jl")
 
 Base.show(io::IO, self::Evaluable) = print(io, string(typeof(self).name.name), typerepr(self))
 
+typerepr(self::Evaluable) = ""
 typerepr(self::ArrayEvaluable) = string("<", join(size(self), ","), ">")
-typerepr(self::Evaluable{_Coords}) = let n = ndims(self); "(point=<$n>, grad=<$n,$n>)" end
+typerepr(self::CoordsEvaluable) = let n = ndims(self); "(point=<$n>, grad=<$n,$n>)" end
 typerepr(self::Evaluable{_Element}) = "(Element)"
 typerepr(self::Evaluable{_Transform}) = "(Transform)"
 

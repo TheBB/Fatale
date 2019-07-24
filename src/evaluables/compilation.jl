@@ -126,7 +126,11 @@ should be a named tuple of evaluation arguments, containing at least
 
     codes = Expr[]
     for (i, (functype, sym, args)) in enumerate(zip(K.parameters, syms, argsyms))
-        code = :(self.funcs[$i](evalargs, $(args...)))
+        if functype <: __EvalArgs
+            code = :(self.funcs[$i](evalargs, $(args...)))
+        else
+            code = :(self.funcs[$i]($(args...)))
+        end
         push!(codes, :($sym = $code))
     end
 

@@ -1,73 +1,68 @@
 """
-    Argument{T}(name::Symbol)
+    EvalArgs()
 
-Evaluable that obtains the evaluation argument named *name* of type *T*.
+A special Evaluable that just returns the evaluation arguments in raw
+form.
 """
-struct Argument{T} <: Evaluable{T}
-    name :: Symbol
-    size
+struct EvalArgs <: Evaluable{_Any} end
+codegen(::EvalArgs) = __EvalArgs()
+struct __EvalArgs end
+@inline (::__EvalArgs)(arg) = arg
+
+
+"""
+    Funcall
+
+A special Evaluable that represents a function call of the form
+
+    functionname(argument, parameter)
+
+Here, the function name is a symbol, the argument is another Evaluable
+and the parameter is any object of bits type.
+
+A funcall may represent any return type. Use one of the constructors:
+
+    Funcall(_Array, functionname, argument, parameter, eltype, size)
+    Funcall(_Coords, functionname, argument, parameter, eltype, (ndims,))
+    Funcall(_Element, functionname, argument, parameter)
+    Funcall(_Transform, functionname, argument, parameter)
+"""
+struct Funcall{T} <: Evaluable{T}
+    funcname :: Symbol
+    argument :: Evaluable
+    parameter
+
+    # This is a hack so that one struct can represent many different
+    # output types
     eltype
+    size
     ndims
-    Argument{T}(name; size=nothing, eltype=nothing, ndims=nothing) where T = new{T}(name, size, eltype, ndims)
+
+    function Funcall{T}(func, arg, param; size=nothing, eltype=nothing, ndims=nothing) where T
+        T <: _Coords && @assert ndims isa Int
+        T <: _Array && @assert size isa Dims
+        T <: Union{_Coords,_Array} && @assert eltype isa DataType
+        new{T}(func, arg, param, eltype, size, ndims)
+    end
 end
 
-Base.size(self::Argument{_Array}) = self.size
-Base.eltype(self::Argument{_Array}) = self.eltype
-Base.eltype(self::Argument{_Coords}) = self.eltype
-Base.ndims(self::Argument{_Coords}) = self.ndims
+Funcall(::Type{_Coords}, func, arg, param, eltype, (n,)) = Funcall{_Coords}(func, arg, param; eltype=eltype, ndims=n)
+Funcall(::Type{_Array}, func, arg, param, eltype, size) = Funcall{_Array}(func, arg, param; eltype=eltype, size=size)
+Funcall(T::Type{<:Result}, func, arg, param) = Funcall{T}(func, arg, param)
 
-codegen(self::Argument) = __Argument{self.name}()
-struct __Argument{V} end
-@generated (::__Argument{V})(input) where V = quote
-    @_inline_meta
-    input.$V
+arguments(self::Funcall) = Evaluable[self.argument]
+Base.size(self::Funcall{_Array}) = self.size
+Base.ndims(self::Funcall{_Coords}) = self.ndims
+Base.eltype(self::Funcall{<:Union{_Array,_Coords}}) = self.eltype
+
+codegen(self::Funcall) = __Funcall{self.funcname, self.parameter}()
+struct __Funcall{F,A} end
+@generated function (::__Funcall{F,A})(arg) where {F,A}
+    quote
+        @_inline_meta
+        $F(arg, :($A))
+    end
 end
-
-
-struct CoordsArgument <: CoordsEvaluable
-    name :: Symbol
-    eltype :: DataType
-    ndims :: Int
-end
-Base.eltype(self::CoordsArgument) = self.eltype
-Base.ndims(self::CoordsArgument) = self.ndims
-codegen(self::CoordsArgument) = __Argument{self.name}()
-
-
-
-"""
-    ElementData{T}(args...)
-
-An evaluable that accesses element data named *V* of type *T*. Some
-standard names are defined:
-
-- :loctrans -> the local parameter transformation
-- :globtrans -> the global physical transformation
-- :index -> the element index (an)
-
-You can use others so long as you know that the element type supports
-them, that is, there is a method of Fatale.Elements.elementdata
-
-    elementdata(::ElementType, ::Val{sym}, args...) :: T
-"""
-struct ElementData{T} <: Evaluable{T}
-    name :: Symbol
-    args :: Tuple
-    size
-    eltype
-
-    ElementData{T}(name, args...; size=nothing, eltype=nothing) where T = new{T}(name, args, size, eltype)
-end
-
-Base.size(self::ElementData{_Array}) = self.size
-Base.eltype(self::ElementData{_Array}) = self.eltype
-
-codegen(self::ElementData) = __ElementData{self.name}(self.args)
-struct __ElementData{V,T}
-    args :: T
-    __ElementData{V}(args::T) where {V,T} = new{V,T}(args)
-end
-@inline (self::__ElementData{V})(input) where V = elementdata(input.element, Val(V), self.args...)
 
 
 """
@@ -86,38 +81,9 @@ arguments(self::ApplyTrans) = Evaluable[self.transform, self.coords]
 
 codegen(self::ApplyTrans) = __ApplyTrans()
 struct __ApplyTrans end
-@inline function (::__ApplyTrans)(_, trans, point)
+@inline function (::__ApplyTrans)(trans, point)
     (point, grad) = trans(point.point, point.grad)
     (point=point, grad=grad)
-end
-
-
-"""
-    GetProperty(arg, name)
-
-Evaluable accessing a field of *arg* named *name*.
-"""
-struct GetProperty <: ArrayEvaluable
-    arg :: CoordsEvaluable
-    name :: Symbol
-
-    function GetProperty(arg::CoordsEvaluable, name::Symbol)
-        @assert name in [:point, :grad]
-        new(arg, name)
-    end
-end
-
-arguments(self::GetProperty) = Evaluable[self.arg]
-Base.eltype(self::GetProperty) = eltype(self.arg)
-Base.size(self::GetProperty) = let n = ndims(self.arg)
-    self.name == :grad ? (n, n) : (n,)
-end
-
-codegen(self::GetProperty) = __GetProperty{self.name}()
-struct __GetProperty{V} end
-@generated (::__GetProperty{V})(_, arg) where V = quote
-    @_inline_meta
-    arg.$V
 end
 
 
@@ -181,7 +147,7 @@ Base.size(self::Add) = self.dims
 
 codegen(self::Add) = __Add()
 struct __Add end
-@generated function (self::__Add)(_, args...)
+@generated function (self::__Add)(args...)
     argcodes = [:(args[$i]) for i in 1:length(args)]
     quote
         .+($(argcodes...))
@@ -226,7 +192,7 @@ struct __Contract{I,Ti,T}
     val :: T
     __Contract{I,Ti}(val::T) where {I,Ti,T} = new{I,Ti,T}(val)
 end
-@generated function (self::__Contract{I,Ti})(_, args...) where {I,Ti}
+@generated function (self::__Contract{I,Ti})(args...) where {I,Ti}
     dims = _sizedict(args, I)
     dim_order = Dict(axis => num for (num, axis) in enumerate(keys(dims)))
 
@@ -274,7 +240,7 @@ codegen(self::Constant) = __Constant(self.value)
 struct __Constant{T}
     val :: T
 end
-@inline (self::__Constant)(_) = self.val
+@inline (self::__Constant)() = self.val
 
 
 """
@@ -317,7 +283,7 @@ end
 
 codegen(self::GetIndex) = __GetIndex()
 struct __GetIndex end
-@generated function (self::__GetIndex)(_, arg, indices...)
+@generated function (self::__GetIndex)(arg, indices...)
     inds = Expr[:(indices[$i]) for i in 1:length(indices)]
     quote
         @_inline_meta
@@ -351,7 +317,7 @@ end
 
 codegen(self::Inv) = __Inv()
 struct __Inv end
-@inline (::__Inv)(_, arg) = inv(arg)
+@inline (::__Inv)(arg) = inv(arg)
 
 
 """
@@ -381,7 +347,7 @@ struct __Monomials{D,P,T}
         new{D,P,typeof(val)}(val)
     end
 end
-@generated function (self::__Monomials{D,P})(_, arg) where {D,P}
+@generated function (self::__Monomials{D,P})(arg) where {D,P}
     colons = [Colon() for _ in 1:ndims(arg)]
     codes = [
         :(self.val[$(colons...), $(P+i+1)] .= self.val[$(colons...), $(P+i)] .* arg)
@@ -422,7 +388,7 @@ Base.size(self::Multiply) = self.dims
 
 codegen(self::Multiply) = __Multiply()
 struct __Multiply end
-@generated function (self::__Multiply)(_, args...)
+@generated function (self::__Multiply)(args...)
     argcodes = [:(args[$i]) for i in 1:length(args)]
     quote
         .*($(argcodes...))
@@ -444,7 +410,7 @@ Base.size(self::Negate) = size(self.arg)
 
 codegen(self::Negate) = __Negate()
 struct __Negate end
-@inline (::__Negate)(_, arg) = -arg
+@inline (::__Negate)(arg) = -arg
 
 
 """
@@ -462,7 +428,7 @@ valueof(self::OneTo) = SOneTo(self.stop)
 
 codegen(self::OneTo) = __OneTo{self.stop}()
 struct __OneTo{S} end
-@inline (::__OneTo{S})(_) where S = SOneTo(S)
+@inline (::__OneTo{S})() where S = SOneTo(S)
 
 
 """
@@ -486,7 +452,7 @@ Base.size(self::PermuteDims) = Tuple(size(self.arg, i) for i in self.perm)
 
 codegen(self::PermuteDims) = __PermuteDims{self.perm}()
 struct __PermuteDims{I} end
-@generated function (::__PermuteDims{I})(_, arg) where I
+@generated function (::__PermuteDims{I})(arg) where I
     insize = size(arg)
     outsize = Tuple(size(arg, i) for i in I)
 
@@ -523,7 +489,7 @@ Base.size(self::Power) = size(self.arg)
 
 codegen(self::Power) = __Power{self.exp}()
 struct __Power{P} end
-@inline (::__Power{P})(_, arg) where P = arg .^ P
+@inline (::__Power{P})(arg) where P = arg .^ P
 
 
 """
@@ -540,8 +506,8 @@ Base.size(self::Reciprocal) = size(self.arg)
 
 codegen(self::Reciprocal) = __Reciprocal()
 struct __Reciprocal end
-@inline (::__Reciprocal)(_, arg::Scalar) = Scalar(one(eltype(arg)) / arg[])
-@inline (::__Reciprocal)(_, arg) = one(eltype(arg)) ./ arg
+@inline (::__Reciprocal)(arg::Scalar) = Scalar(one(eltype(arg)) / arg[])
+@inline (::__Reciprocal)(arg) = one(eltype(arg)) ./ arg
 
 
 """
@@ -560,7 +526,7 @@ Base.size(self::Reshape) = self.shape
 
 codegen(self::Reshape) = __Reshape{size(self)}()
 struct __Reshape{S} end
-@generated (self::__Reshape{S})(_, arg) where S = quote
+@generated (self::__Reshape{S})(arg) where S = quote
     @_inline_meta
     SArray{Tuple{$(S...)}}(arg)
 end
@@ -580,8 +546,8 @@ Base.size(self::Sqrt) = size(self.arg)
 
 codegen(self::Sqrt) = __Sqrt()
 struct __Sqrt end
-@inline (::__Sqrt)(_, arg) = sqrt.(arg)
-@inline (::__Sqrt)(_, arg::Scalar) = Scalar(sqrt(arg[1]))
+@inline (::__Sqrt)(arg) = sqrt.(arg)
+@inline (::__Sqrt)(arg::Scalar) = Scalar(sqrt(arg[1]))
 
 
 """
@@ -617,7 +583,7 @@ codegen(self::Sum) = __Sum(self.dims, size(self))
 struct __Sum{D,S}
     __Sum(D,S) = new{D,S}()
 end
-@generated function (self::__Sum{D,S})(_, arg) where {D,S}
+@generated function (self::__Sum{D,S})(arg) where {D,S}
     D = collect(D)
     tempsize = Tuple(i in D ? 1 : k for (i, k) in enumerate(size(arg)))
 
@@ -654,7 +620,7 @@ valueof(self::FUnitRange) = SUnitRange(self.start, self.stop)
 
 codegen(self::FUnitRange) = __FUnitRange{self.start, self.stop}()
 struct __FUnitRange{S,E} end
-@inline (::__FUnitRange{S,E})(_) where {S,E}  = SUnitRange(S,E)
+@inline (::__FUnitRange{S,E})() where {S,E}  = SUnitRange(S,E)
 
 
 """
@@ -674,4 +640,4 @@ Base.size(self::Zeros) = self.dims
 
 codegen(self::Zeros) = __Zeros{SArray{Tuple{size(self)...}, eltype(self), ndims(self), length(self)}}()
 struct __Zeros{T} end
-@inline (self::__Zeros{T})(_) where T = zero(T)
+@inline (self::__Zeros{T})() where T = zero(T)

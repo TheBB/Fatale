@@ -4,10 +4,14 @@ function grad(self::Evaluable, geom::Evaluable)
     grad(self, dims) * inv(grad(geom, dims))
 end
 
-function grad(self::GetProperty, d::Int)
-    @assert d == size(self, 1)
-    self.name == :point && return GetProperty(self.arg, :grad)
-    self.name == :grad && return Zeros(eltype(self), size(self)..., d)
+# This is the hackiest hack that ever hacked
+function grad(self::Funcall{_Array}, d::Int)
+    @assert self.funcname == :getfield
+    @assert self.argument isa CoordsEvaluable
+    @assert d == ndims(self.argument)
+    @assert self.parameter in [:point, :grad]
+    self.parameter == :point && return Funcall(_Array, :getfield, self.argument, :grad, eltype(self), (size(self)..., d))
+    self.parameter == :grad && return Zeros(eltype(self), size(self)..., d)
 end
 
 function grad(self::Add, d::Int)
