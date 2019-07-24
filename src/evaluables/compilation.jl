@@ -107,7 +107,9 @@ end
 
 @inline function (self::OptimizedEvaluable)(element, quadpt::SVector{N,T}) where {N,T}
     grad = SMatrix{N,N,T}(I)
-    self((element=element, point=(point=quadpt, grad=grad)))
+    trans = elementdata(element, Val{:loctrans}())
+    (point, tgrad) = trans(quadpt, grad)
+    self((element=element, point=(point=point, grad=tgrad)))
 end
 
 """

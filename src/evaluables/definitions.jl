@@ -5,7 +5,16 @@ Evaluable that obtains the evaluation argument named *name* of type *T*.
 """
 struct Argument{T} <: Evaluable{T}
     name :: Symbol
+    size
+    eltype
+    ndims
+    Argument{T}(name; size=nothing, eltype=nothing, ndims=nothing) where T = new{T}(name, size, eltype, ndims)
 end
+
+Base.size(self::Argument{_Array}) = self.size
+Base.eltype(self::Argument{_Array}) = self.eltype
+Base.eltype(self::Argument{_Coords}) = self.eltype
+Base.ndims(self::Argument{_Coords}) = self.ndims
 
 codegen(self::Argument) = __Argument{self.name}()
 struct __Argument{V} end

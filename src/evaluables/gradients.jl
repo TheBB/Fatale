@@ -6,7 +6,7 @@ end
 
 function grad(self::GetProperty{_Array}, d::Int)
     @assert self.name in [:point, :grad]
-    @assert self.arg isa ApplyTrans
+    @assert self.arg isa Evaluable{_Coords}
     @assert d == size(self, 1)
 
     if self.name == :point
