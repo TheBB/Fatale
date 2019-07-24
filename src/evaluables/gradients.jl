@@ -4,16 +4,10 @@ function grad(self::Evaluable, geom::Evaluable)
     grad(self, dims) * inv(grad(geom, dims))
 end
 
-function grad(self::GetProperty{_Array}, d::Int)
-    @assert self.name in [:point, :grad]
-    @assert self.arg isa Evaluable{_Coords}
+function grad(self::GetProperty, d::Int)
     @assert d == size(self, 1)
-
-    if self.name == :point
-        GetProperty(self.arg, :grad)
-    else
-        Zeros(eltype(self), size(self)..., d)
-    end
+    self.name == :point && return GetProperty(self.arg, :grad)
+    self.name == :grad && return Zeros(eltype(self), size(self)..., d)
 end
 
 function grad(self::Add, d::Int)

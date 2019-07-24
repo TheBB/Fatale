@@ -97,19 +97,19 @@ end
 
 Evaluable accessing a field of *arg* named *name*.
 """
-struct GetProperty{T} <: Evaluable{T}
-    arg :: Evaluable
+struct GetProperty <: ArrayEvaluable
+    arg :: CoordsEvaluable
     name :: Symbol
 
-    function GetProperty(arg::Evaluable{_Coords}, name::Symbol)
+    function GetProperty(arg::CoordsEvaluable, name::Symbol)
         @assert name in [:point, :grad]
-        new{_Array}(arg, name)
+        new(arg, name)
     end
 end
 
 arguments(self::GetProperty) = Evaluable[self.arg]
-Base.eltype(self::GetProperty{_Array}) = eltype(self.arg)
-Base.size(self::GetProperty{_Array}) = let n = ndims(self.arg)
+Base.eltype(self::GetProperty) = eltype(self.arg)
+Base.size(self::GetProperty) = let n = ndims(self.arg)
     self.name == :grad ? (n, n) : (n,)
 end
 
