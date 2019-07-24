@@ -70,7 +70,7 @@ of type (indices=(...), data=...), with evaluables producing
 IJV-format array elements.
 """
 blocks(self::ArrayEvaluable) = [(
-    indices = Tuple(Constant(1:s) for s in size(self)),
+    indices = Tuple(OneTo(s) for s in size(self)),
     data = self,
 )]
 
