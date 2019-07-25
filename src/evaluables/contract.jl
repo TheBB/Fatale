@@ -177,3 +177,25 @@ function Contract(left::Zeros, right::Evaluable, l, r, t)
     newtype = promote_type(eltype(left), eltype(right))
     Zeros(newtype, newsize...)
 end
+
+# Contraction must commute with inflation
+function Contract(left::Inflate, right::Evaluable, l, r, t)
+    infaxis = left.axis
+    infid = l[infaxis]
+    indices = left.indices
+
+    # Apply a getindex operation on the right argument
+    # so that it matches the nonzero entries on the left
+    newright = getindex(right, (ri == infid ? indices : Colon() for ri in r)...)
+
+    # Apply the contraction as specified
+    ret = Contract(left.arg, newright, l, r, t)
+
+    # Inflate the axes that correspond to the originally inflated one, if any
+    new_infaxes = findall(==(infid), t)
+    for infaxis in new_infaxes
+        ret = Inflate(ret, indices, left.newsize, infaxis)
+    end
+
+    ret
+end
