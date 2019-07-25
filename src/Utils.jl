@@ -1,6 +1,6 @@
 module Utils
 
-export outer, exterior, MemoizedMap
+export outer, exterior, MemoizedMap, swap!
 
 
 """
@@ -33,6 +33,18 @@ function Base.getindex(self::MemoizedMap, i::Int)
 end
 
 (self::MemoizedMap)(i::Int) = self[i]
+
+
+"""
+    swap!(collection, i, j)
+
+Swap two elements in a collection. Same as
+
+     collection[i], collection[j] = collection[j], collection[i]
+"""
+function swap!(vec, i, j)
+    vec[i], vec[j] = vec[j], vec[i]
+end
 
 
 function outer(factors...)

@@ -163,10 +163,9 @@ function Contract(left::Contract, right::Contract, l, r, t)
     contract = _fold_contract(left, right, l, r, t)
     if left.args[1] isa AbstractConstant && right.args[1] isa AbstractConstant
         _collapse_constants!(contract, k)
-        # args, inds = _collapse_constants(args, inds, target, 1, k)
     elseif right.args[1] isa AbstractConstant
-        contract.args[1], contract.args[k] = contract.args[k], contract.args[1]
-        contract.indices[1], contract.indices[k] = contract.indices[k], contract.indices[1]
+        swap!(contract.args, 1, k)
+        swap!(contract.indices, 1, k)
     end
     contract
 end
