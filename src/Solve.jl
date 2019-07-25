@@ -3,7 +3,7 @@ module Solve
 import ..Utils: exterior
 import ..Integrate: integrate
 
-export project
+export project, solve
 
 
 _colsupp(mx) = findall(!iszero, diff(mx.colptr))
@@ -20,6 +20,24 @@ function project!(func, basis, domain, quadrule, cons)
     cons
 end
 
+
+function solve(mx, rhs, cons)
+    n = length(rhs)
+
+    I = findall(ismissing, cons)   # unconstrained dofs
+    J = setdiff(1:n, I)            # constrained dofs
+
+    lhs = zeros(eltype(rhs), n)
+    lhs[J] .= cons[J]
+
+    a_rhs = zeros(eltype(rhs), n)
+    a_rhs[I] .= (rhs - mx * lhs)[I]
+
+    lhs = zeros(eltype(rhs), n)
+    lhs[J] = cons[J]
+    solve!(lhs, mx, a_rhs, I)
+    lhs
+end
 
 function solve!(lhs, mx, rhs, I)
     lhs[I] .= mx[I,I] \ rhs[I]
