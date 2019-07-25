@@ -281,4 +281,10 @@ function Reshape(self::Inflate, newsize...)
     Inflate(reshape(self.arg, newsize...), self.indices, self.newsize, new_infaxis)
 end
 
+function Sum(self::Inflate, dims, collapse::Bool)
+    # TODO: Temporary restriction
+    @assert !(self.axis in dims)
+    Inflate(sum(self.arg; dims=dims, collapse=collapse), self.indices, self.newsize, self.axis)
+end
+
 Sqrt(self::AbstractConstant) = convert(Evaluable, sqrt.(valueof(self)))
