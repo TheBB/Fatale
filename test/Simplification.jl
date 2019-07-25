@@ -64,6 +64,43 @@
 end
 
 
+@testset "Contract" begin
+    Random.seed!(201707251002)
+
+    d1 = @SArray rand(2,2)
+    d2 = @SArray rand(2,2)
+    d3 = @SArray rand(2,2)
+
+    a1 = DummyConstant(@SArray rand(2,2))
+    a2 = DummyConstant(@SArray rand(2,2))
+    c1 = Constant(d1)
+    c2 = Constant(d2)
+    c3 = Constant(d3)
+
+    q = c1 * c2 * c3
+    @test q isa Constant
+    @test Evaluables.valueof(q) == d1 * d2 * d3
+
+    q = a1 * c2
+    @test q.args[1] isa Constant
+    @test q.args[2] isa DummyConstant
+    @test Evaluables.valueof(q.args[1]) == d2
+
+    q = a1 * c2 * c3
+    @test q.args[1] isa Constant
+    @test q.args[2] isa DummyConstant
+    @test Evaluables.valueof(q.args[1]) == d2 * d3
+
+    q1 = a1 * c1
+    q2 = a2 * c2
+    q = q1 * q2
+    @test q.args[1] isa Constant
+    @test q.args[2] isa DummyConstant
+    @test q.args[3] isa DummyConstant
+    @test Evaluables.valueof(q.args[1]) ≈ reshape(d1, 2, 2, 1, 1) .* reshape(d2, 1, 1, 2, 2)
+end
+
+
 @testset "Multiply" begin
     a1 = DummyConstant(@SArray [1,0,0])
     a2 = DummyConstant(@SArray [2,0,0])

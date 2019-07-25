@@ -211,12 +211,115 @@ end
 Constant(value::Real) = Constant(Scalar(value))
 Constant(value::AbstractArray) = Constant(SArray{Tuple{size(value)...}, eltype(value)}(value))
 
-Contract(left::ArrayEvaluable, right::ArrayEvaluable, lind::Dims, rind::Dims, target::Dims) =
-    Contract((left, right), (lind, rind), target)
+# Contract: Ensure that constants accumulate on the left, and simplify them there
+function _do_contract(left, right, l, r, t)
+    newsize = _contract_size((left, right), (l, r), t)
+    newtype = promote_type(eltype(left), eltype(right))
+    ret = @MArray zeros(newtype, newsize...)
+    func = __Contract{(l,r),t}(ret)
+    func(left, right)
+end
+
+function _fold_contract(left::Contract, right::Evaluable, l, r, t)
+    # Axis renaming
+    rename = Dict(zip(l, left.target))
+    newinds = _newindices(left)
+    nextind, state = iterate(newinds)
+
+    function getind(ind)
+        ind in keys(rename) && return rename[ind]
+        rename[ind] = nextind
+        nextind, state = iterate(newinds, state)
+        rename[ind]
+    end
+
+    r = map(getind, r)
+    t = map(getind, t)
+
+    (left.args..., right), (left.indices..., r), t
+end
+
+function _fold_contract(left::Contract, right::Contract, l, r, t)
+    r_to_m = Dict(zip(right.target, r))
+    m_to_l = Dict(zip(l, left.target))
+
+    newinds_m = _newindices(Contract((left, right), (l, r), t))
+    newinds_l = _newindices(left)
+
+    nextind_m, state_m = iterate(newinds_m)
+    nextind_l, state_l = iterate(newinds_l)
+
+    function getind_m(rind)
+        rind in keys(r_to_m) && return r_to_m[rind]
+        r_to_m[rind] = nextind_m
+        nextind_m, state_m = iterate(newinds_m, state_m)
+        r_to_m[rind]
+    end
+
+    function getind_l(mind)
+        mind in keys(m_to_l) && return m_to_l[mind]
+        m_to_l[mind] = nextind_l
+        nextind_l, state_l = iterate(newinds_l, state_l)
+        m_to_l[mind]
+    end
+
+    getind_r_to_m = getind_l ∘ getind_m
+
+    new_rinds = Tuple(map(getind_r_to_m, ri) for ri in right.indices)
+    new_target = map(getind_l, t)
+
+    (left.args..., right.args...), (left.indices..., new_rinds...), new_target
+end
+
+function _collapse_outer(args, inds, target, i, j)
+    if i > j
+        i, j = j, i
+    end
+    other_inds = ∪(
+        Set(flatten(inds[1:i-1])),
+        Set(flatten(inds[i+1:j-1])),
+        Set(flatten(inds[j+1:end])),
+        Set(target)
+    )
+    newtarget = Tuple(i for i in (inds[i]..., inds[j]...) if i in other_inds)
+    newarg = convert(Evaluable, _do_contract(valueof(args[i]), valueof(args[j]), inds[i], inds[j], newtarget))
+    args = (newarg, args[1:i-1]..., args[i+1:j-1]..., args[j+1:end]...)
+    inds = (newtarget, inds[1:i-1]..., inds[i+1:j-1]..., inds[j+1:end]...)
+    args, inds
+end
+
+Contract(left::Evaluable, right::Evaluable, l, r, t) = Contract((left, right), (l, r), t)
+Contract(left::Evaluable, right, l, r, t) = Contract((left, convert(Evaluable, right)), (l, r), t)
+Contract(left, right::Evaluable, l, r, t) = Contract((convert(Evaluable, left), right), (l, r), t)
+Contract(left::Evaluable, right::AbstractConstant, l, r, t) = Contract(right, left, r, l, t)
+Contract(left::AbstractConstant, right::AbstractConstant, l, r, t) =
+    convert(Evaluable, _do_contract(valueof(left), valueof(right), l, r, t))
+Contract(left::Contract, right::Evaluable, l, r, t) = Contract(_fold_contract(left, right, l, r, t)...)
+Contract(left::Evaluable, right::Contract, l, r, t) = Contract(_fold_contract(right, left, r, l, t)...)
+Contract(left::AbstractConstant, right::Contract, l, r, t) = Contract(right, left, r, l, t)
+
+function Contract(left::Contract, right::AbstractConstant, l, r, t)
+    args, inds, target = _fold_contract(left, right, l, r, t)
+    if args[1] isa AbstractConstant
+        args, inds = _collapse_outer(args, inds, target, 1, length(args))
+    end
+    Contract(args, inds, target)
+end
+
+function Contract(left::Contract, right::Contract, l, r, t)
+    args, inds, target = _fold_contract(left, right, l, r, t)
+    k = length(left.args) + 1
+    if left.args[1] isa AbstractConstant && right.args[1] isa AbstractConstant
+        args, inds = _collapse_outer(args, inds, target, 1, k)
+    elseif right.args[1] isa AbstractConstant
+        args = (args[k], args[1:k-1]..., args[k+1:end]...)
+        inds = (inds[k], inds[1:k-1]..., inds[k+1:end]...)
+    end
+    Contract(args, inds, target)
+end
 
 function Contract(left::Zeros, right::ArrayEvaluable, lind::Dims, rind::Dims, target::Dims)
-    dims = _sizedict((left, right), (lind, rind))
-    newsize = Tuple(dims[i] for i in target)
+    newsize = _contract_size((left, right), (lind, rind), target)
     newtype = promote_type(eltype(left), eltype(right))
     Zeros(newtype, newsize...)
 end
@@ -235,7 +338,7 @@ Multiply(self::Evaluable) = self
 Multiply(left::Evaluable, right::Evaluable) = Multiply((left, right))
 Multiply(left::Evaluable, right) = Multiply((convert(Evaluable, right), left))
 Multiply(left, right::Evaluable) = Multiply((convert(Evaluable, left), right))
-Multiply(left::Evaluable, right::AbstractConstant) = Multiply((right, left))
+Multiply(left::Evaluable, right::AbstractConstant) = Multiply(right, left)
 Multiply(left::AbstractConstant, right::AbstractConstant) = convert(Evaluable, valueof(left) .* valueof(right))
 Multiply(left::Multiply, right::Evaluable) = Multiply((left.args..., right))
 Multiply(left::Evaluable, right::Multiply) = Multiply((right.args..., left))
@@ -251,8 +354,7 @@ end
 function Multiply(left::Multiply, right::Multiply)
     if left.args[1] isa AbstractConstant && right.args[1] isa AbstractConstant
         return Multiply((left.args[1] .* right.args[1], left.args[2:end]..., right.args[2:end]...))
-    end
-    if right.args[1] isa AbstractConstant
+    elseif right.args[1] isa AbstractConstant
         return Multiply((right.args[1], left.args..., right.args[2:end]...))
     end
     Multiply(left.args..., right.args...)

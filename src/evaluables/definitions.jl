@@ -178,9 +178,7 @@ struct Contract <: ArrayEvaluable
 end
 
 arguments(self::Contract) = self.args
-Base.size(self::Contract) = let dims = _sizedict(self.args, self.indices)
-    Tuple(dims[i] for i in self.target)
-end
+Base.size(self::Contract) = _contract_size(self.args, self.indices, self.target)
 
 codegen(self::Contract) = __Contract{self.indices, self.target}(
     @MArray zeros(eltype(self), size(self)...)
@@ -213,10 +211,17 @@ end
     end
 end
 
+function _newindices(self::Contract)
+    start = max(flatten(self.indices)..., self.target...)
+    countfrom(start + 1)
+end
 _sizedict(args, inds) = OrderedDict(flatten(
     (k => v for (k, v) in zip(ind, size(arg)))
     for (arg, ind) in zip(args, inds)
 ))
+_contract_size(args, indices, target) = let dims = _sizedict(args, indices)
+    Tuple(dims[i] for i in target)
+end
 
 
 """

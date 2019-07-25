@@ -2,7 +2,7 @@ module Evaluables
 
 import Base: @_inline_meta
 import Base.Broadcast: broadcast_shape
-import Base.Iterators: isdone, Stateful, flatten, product
+import Base.Iterators: isdone, Stateful, flatten, product, countfrom
 using DataStructures
 using LinearAlgebra
 using StaticArrays
