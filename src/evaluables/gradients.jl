@@ -28,9 +28,9 @@ function grad(self::Contract, d::Int)
         grad_arg = grad(arg, d)
         if !(grad_arg isa Zeros)
             push!(terms, Contract(
-                (self.args[1:i-1]..., grad_arg, self.args[i+1:end]...),
-                (self.indices[1:i-1]..., (self.indices[i]..., next), self.indices[i+1:end]...),
-                (self.target..., next)
+                Evaluable[self.args[1:i-1]..., grad_arg, self.args[i+1:end]...],
+                Vector{Int}[self.indices[1:i-1]..., Int[self.indices[i]..., next], self.indices[i+1:end]...],
+                Int[self.target..., next]
             ))
         end
     end
@@ -70,6 +70,6 @@ end
 grad(self::Constant, d::Int) = Zeros(eltype(self), size(self)..., d)
 grad(self::GetIndex, d::Int) where I = GetIndex(grad(self.arg, d), self.index..., :)
 grad(self::Inflate, d::Int) = Inflate(grad(self.arg, d), self.indices, self.newsize, self.axis)
-grad(self::Inv, d::Int) = -Contract(self * grad(self.arg, d), self, (1, 2, 3), (2, 4), (1, 4, 3))
+grad(self::Inv, d::Int) = -Contract(self * grad(self.arg, d), self, [1, 2, 3], [2, 4], [1, 4, 3])
 grad(self::Reshape, d::Int) = reshape(grad(self.arg, d), size(self)..., d)
 grad(self::PermuteDims, d::Int) = permutedims(grad(self.arg, d), (self.perm..., ndims(self) + 1))

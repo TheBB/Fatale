@@ -110,6 +110,7 @@ function Inflate(arg, indices, newsize)
 end
 
 arguments(self::Inflate) = Evaluable[self.arg, self.indices]
+Base.eltype(self::Inflate) = eltype(self.arg)
 Base.size(self::Inflate) = Tuple(
     i == self.axis ? self.newsize : size(self.arg, i)
     for i in 1:ndims(self.arg)
@@ -149,78 +150,6 @@ struct __Add end
     quote
         .+($(argcodes...))
     end
-end
-
-
-"""
-    Contract((args...), (indices...), target)
-
-Compute a fully unrolled tensor contraction.
-"""
-struct Contract <: ArrayEvaluable
-    args :: Vector{Evaluable}
-    indices :: VarTuple{Dims}
-    target :: Dims
-
-    function Contract(args::VarTuple{ArrayEvaluable}, indices::VarTuple{Dims}, target::Dims)
-        @assert length(args) == length(indices)
-        @assert all(ndims(arg) == length(ind) for (arg, ind) in zip(args, indices))
-        @assert all(!(k isa Zeros) for k in args)
-
-        dims = _sizedict(args, indices)
-        for (arg, ind) in zip(args, indices)
-            @assert all(size(arg, i) == dims[ind[i]] for i in 1:ndims(arg))
-        end
-
-        target_size = Tuple(dims[i] for i in target)
-        new(collect(Evaluable, args), indices, target)
-    end
-end
-
-arguments(self::Contract) = self.args
-Base.size(self::Contract) = _contract_size(self.args, self.indices, self.target)
-
-codegen(self::Contract) = __Contract{self.indices, self.target}(
-    @MArray zeros(eltype(self), size(self)...)
-)
-struct __Contract{I,Ti,T}
-    val :: T
-    __Contract{I,Ti}(val::T) where {I,Ti,T} = new{I,Ti,T}(val)
-end
-@generated function (self::__Contract{I,Ti})(args...) where {I,Ti}
-    dims = _sizedict(args, I)
-    dim_order = Dict(axis => num for (num, axis) in enumerate(keys(dims)))
-
-    codes = Expr[]
-    for indices in product((1:n for n in values(dims))...)
-        inputs = [
-            :(args[$i][$((indices[dim_order[ax]] for ax in ind)...)])
-            for (i, ind) in enumerate(I)
-        ]
-        product = :(*($(inputs...)))
-        target = :(self.val[$((indices[dim_order[ax]] for ax in Ti)...)])
-        push!(codes, :($target += $product))
-    end
-
-    quote
-        @inbounds begin
-            self.val .= zero(eltype(self.val))
-            $(codes...)
-        end
-        SArray(self.val)
-    end
-end
-
-function _newindices(self::Contract)
-    start = max(flatten(self.indices)..., self.target...)
-    countfrom(start + 1)
-end
-_sizedict(args, inds) = OrderedDict(flatten(
-    (k => v for (k, v) in zip(ind, size(arg)))
-    for (arg, ind) in zip(args, inds)
-))
-_contract_size(args, indices, target) = let dims = _sizedict(args, indices)
-    Tuple(dims[i] for i in target)
 end
 
 

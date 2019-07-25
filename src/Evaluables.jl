@@ -10,6 +10,7 @@ using UnsafeArrays
 using SparseArrays
 import StaticArrays: SOneTo, SUnitRange
 
+using ..Utils
 using ..Elements
 using ..Transforms
 
@@ -77,6 +78,7 @@ blocks(self::ArrayEvaluable) = [(
 
 include("evaluables/compilation.jl")
 include("evaluables/definitions.jl")
+include("evaluables/contract.jl")
 include("evaluables/utility.jl")
 include("evaluables/gradients.jl")
 

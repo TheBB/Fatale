@@ -76,8 +76,8 @@ end
     mx1 = @SMatrix rand(2,3)
     mx2 = @SMatrix rand(3,2)
     func = optimize(Contract(
-        (DummyConstant(mx1), DummyConstant(mx2)),
-        ((1,2), (2,3)), (1,3)
+        [DummyConstant(mx1), DummyConstant(mx2)],
+        [[1,2], [2,3]], [1,3]
     ))
     @test func(nothing, nothing) ≈ mx1 * mx2
 
@@ -86,14 +86,14 @@ end
 
     mx3 = @SMatrix rand(2,8)
     func = optimize(Contract(
-        (DummyConstant(mx1), DummyConstant(mx2), DummyConstant(mx3)),
-        ((1,2), (2,3), (3,4)), (1,4)
+        [DummyConstant(mx1), DummyConstant(mx2), DummyConstant(mx3)],
+        [[1,2], [2,3], [3,4]], [1,4]
     ))
     @test func(nothing, nothing) ≈ mx1 * mx2 * mx3
 
     func = optimize(Contract(
-        (DummyConstant(mx1), DummyConstant(mx2), DummyConstant(mx3')),
-        ((10,30), (30,90), (71,10)), (71,90)
+        [DummyConstant(mx1), DummyConstant(mx2), DummyConstant(mx3')],
+        [[10,30], [30,90], [71,10]], [71,90]
     ))
     @test func(nothing, nothing) ≈ mx3' * mx1 * mx2
 
