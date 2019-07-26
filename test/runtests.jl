@@ -48,6 +48,20 @@ Evaluables.codegen(self::DummyConstant) = Evaluables.__Constant(self.value)
 
 
 # ==============================================================================
+# Some useful functions
+
+function isapprox_missing(a::Union{A,Missing}, b::Union{B,Missing}) where {A,B}
+    ismissing(a) && ismissing(b) && return true
+    a isa A && b isa B && return isapprox(a, b; atol=1e-15, rtol=1e-15)
+    false
+end
+
+function isapprox_missing(a::AbstractArray{Union{A,Missing}}, b::AbstractArray{Union{B,Missing}}) where {A,B}
+    size(a) == size(b) && all(isapprox_missing(aa, bb) for (aa, bb) in zip(a, b))
+end
+
+
+# ==============================================================================
 # Some useful macros
 
 "Check that the result of `expr`, which should be a benchmark, has no

@@ -47,10 +47,30 @@ function swap!(vec, i, j)
 end
 
 
+"""
+    outer(factors...)
+
+Outer product of a number of vector-valued factors.
+"""
 function outer(factors...)
     .*((reshape(f, fill(1, k-1)..., :) for (k, f) in enumerate(factors))...)
 end
 
-exterior(func; repeat=2) = outer(Iterators.repeated(func, repeat)...)
+
+"""
+    exterior(left[, right])
+
+Forms an outer product of the first axes of each argument. If only one
+argument is given, form the outer product with itself.
+"""
+function exterior(left, right)
+    @assert size(left, 1) == size(right, 1)
+    n = size(left, 1)
+    left = reshape(left, n, 1, size(left)[2:end]...)
+    right = reshape(right, 1, n, size(right)[2:end]...)
+    left .* right
+end
+
+exterior(self) = exterior(self, self)
 
 end

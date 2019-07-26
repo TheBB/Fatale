@@ -3,7 +3,7 @@ module Solve
 import ..Utils: exterior
 import ..Integrate: integrate
 
-export project, solve
+export project, project!, solve
 
 
 _colsupp(mx) = findall(!iszero, diff(mx.colptr))

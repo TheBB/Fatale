@@ -95,6 +95,9 @@ function Base.:*(left::Evaluable, right::Evaluable)
     Contract(left, right, linds, rinds, tinds)
 end
 
+Base.:*(left::Evaluable, right) = left * convert(Evaluable, right)
+Base.:*(left, right::Evaluable) = convert(Evaluable, left) * right
+
 Base.:-(self::Evaluable) = Negate(self)
 Base.:-(left::Evaluable, right) = left + (-right)
 Base.:+(left::Evaluable, right::Evaluable) = Add(left, right)
