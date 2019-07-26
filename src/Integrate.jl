@@ -5,9 +5,15 @@ import ..Evaluables:
     ArrayEvaluable, optimize
 
 import Strided: UnsafeStridedView, sreshape
-import SparseArrays: sparse!, dropzeros!, nnz
+import SparseArrays: sparse!, dropzeros!, nnz, sparse
 
 export integrate, to
+
+
+function _sparse(I, J, V, m, n)
+    A = sparse(I, J, V, m, n)
+    dropzeros!(A)
+end
 
 
 function _sparse!(I, J, V, m, n)
@@ -78,7 +84,8 @@ function integrate(func::OptimizedSparseEvaluable{T,2}, domain, quadrule) where 
         i += l
     end
 
-    _sparse!(I, J, V, size(func)...)
+    _sparse(I, J, V, size(func)...)
+    # _sparse!(I, J, V, size(func)...)
 end
 
 function _integrate(block::OptimizedBlockEvaluable{2}, domain, quadrule, I, J, V)
