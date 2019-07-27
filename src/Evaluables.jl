@@ -77,8 +77,11 @@ blocks(self::ArrayEvaluable) = [(
 
 
 include("evaluables/compilation.jl")
+
+include("evaluables/basic.jl")
 include("evaluables/definitions.jl")
 include("evaluables/contract.jl")
+
 include("evaluables/utility.jl")
 include("evaluables/gradients.jl")
 
