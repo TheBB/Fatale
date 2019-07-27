@@ -95,7 +95,7 @@ CommArith(cons::Type{<:CommArith}, left::AbstractConstant, right::Inflate) =
 
 
 """
-    Add([args...])
+    Add(left, right)
 
 Elementwise sum of arguments.
 """
@@ -122,7 +122,7 @@ end
 
 
 """
-    Multiply([args...])
+    Multiply(left, right)
 
 Elementwise product of arguments.
 """
