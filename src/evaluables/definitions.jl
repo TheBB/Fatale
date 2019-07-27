@@ -37,37 +37,6 @@ blocks(self::Inflate) = ((
 
 
 """
-    Add(args...)
-
-Elementwise sum of arguments.
-"""
-struct Add <: ArrayEvaluable
-    args :: Vector{Evaluable}
-    dims :: Dims
-
-    function Add(args::VarTuple{ArrayEvaluable})
-        length(args) == 1 && return args[1]
-        # Simplification: constants should accumulate on the left
-        @assert all(!(arg isa AbstractConstant) for arg in args[2:end])
-        dims = broadcast_shape(map(size, args)...)
-        new(collect(Evaluable, args), dims)
-    end
-end
-
-arguments(self::Add) = self.args
-Base.size(self::Add) = self.dims
-
-codegen(self::Add) = __Add()
-struct __Add end
-@generated function (self::__Add)(args...)
-    argcodes = [:(args[$i]) for i in 1:length(args)]
-    quote
-        .+($(argcodes...))
-    end
-end
-
-
-"""
     GetIndex(arg, index...)
 
 An evaluable returning a view into another array.
@@ -185,37 +154,6 @@ end
             $(codes...)
         end
         SArray(self.val)
-    end
-end
-
-
-"""
-    Multiply(args...)
-
-Elementwise product of arguments.
-"""
-struct Multiply <: ArrayEvaluable
-    args :: Vector{Evaluable}
-    dims :: Dims
-
-    function Multiply(args::VarTuple{ArrayEvaluable})
-        length(args) == 1 && return args[1]
-        # Simplification: constants should accumulate on the left
-        @assert all(!(arg isa AbstractConstant) for arg in args[2:end])
-        dims = broadcast_shape(map(size, args)...)
-        new(collect(Evaluable, args), dims)
-    end
-end
-
-arguments(self::Multiply) = self.args
-Base.size(self::Multiply) = self.dims
-
-codegen(self::Multiply) = __Multiply()
-struct __Multiply end
-@generated function (self::__Multiply)(args...)
-    argcodes = [:(args[$i]) for i in 1:length(args)]
-    quote
-        .*($(argcodes...))
     end
 end
 

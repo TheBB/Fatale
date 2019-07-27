@@ -184,46 +184,6 @@ end
 # ==============================================================================
 # Outer constructors
 
-# Add: Ensure that constants accumulate on the left, and simplify them there
-Add(self::Evaluable) = self
-Add(left::Evaluable, right::Evaluable) = Add((left, right))
-Add(left::Evaluable, right) = Add((convert(Evaluable, right), left))
-Add(left, right::Evaluable) = Add((convert(Evaluable, left), right))
-Add(left::Evaluable, right::AbstractConstant) = Add((right, left))
-Add(left::AbstractConstant, right::AbstractConstant) = convert(Evaluable, valueof(left) .+ valueof(right))
-Add(left::Add, right::Evaluable) = Add((left.args..., right))
-Add(left::Evaluable, right::Add) = Add((right.args..., left))
-Add(left::AbstractConstant, right::Add) = Add(right, left)
-
-function Add(left::Add, right::AbstractConstant)
-    if left.args[1] isa AbstractConstant
-        return Add(left.args[1] .+ right, left.args[2:end]...)
-    end
-    Add((right, left.args...))
-end
-
-function Add(left::Add, right::Add)
-    if left.args[1] isa AbstractConstant && right.args[1] isa AbstractConstant
-        return Add((left.args[1] .+ right.args[1], left.args[2:end]..., right.args[2:end]...))
-    end
-    if right.args[1] isa AbstractConstant
-        return Add((right.args[1], left.args..., right.args[2:end]...))
-    end
-    Add((left.args..., right.args...))
-end
-
-Add(left::Evaluable, right::Zeros) = Add(right, left)
-function Add(left::Zeros, right::Evaluable)
-    # TODO: Add a promote_type evaluable
-    @assert eltype(left) == eltype(right)
-
-    # TODO Add a repmat evaluable or something similar
-    newsize = broadcast_shape(size(left), size(right))
-    @assert newsize == size(right)
-
-    right
-end
-
 Constant(value::Real) = Constant(Scalar(value))
 Constant(value::AbstractArray) = Constant(SArray{Tuple{size(value)...}, eltype(value)}(value))
 
@@ -233,48 +193,6 @@ function Monomials(self::Constant, d, p)
     func = __Monomials(d, p, eltype(self), size(self))
     Constant(func(nothing, self.value))
 end
-
-# Multiply: Ensure that constants accumulate on the left, and simplify them there
-Multiply(self::Evaluable) = self
-Multiply(left::Evaluable, right::Evaluable) = Multiply((left, right))
-Multiply(left::Evaluable, right) = Multiply((convert(Evaluable, right), left))
-Multiply(left, right::Evaluable) = Multiply((convert(Evaluable, left), right))
-Multiply(left::Evaluable, right::AbstractConstant) = Multiply(right, left)
-Multiply(left::AbstractConstant, right::AbstractConstant) = convert(Evaluable, valueof(left) .* valueof(right))
-Multiply(left::Multiply, right::Evaluable) = Multiply((left.args..., right))
-Multiply(left::Evaluable, right::Multiply) = Multiply((right.args..., left))
-Multiply(left::AbstractConstant, right::Multiply) = Multiply(right, left)
-
-function Multiply(left::Multiply, right::AbstractConstant)
-    if left.args[1] isa AbstractConstant
-        return Multiply((left.args[1] .* right, left.args[2:end]...))
-    end
-    Multiply((right, left.args...))
-end
-
-function Multiply(left::Multiply, right::Multiply)
-    if left.args[1] isa AbstractConstant && right.args[1] isa AbstractConstant
-        return Multiply((left.args[1] .* right.args[1], left.args[2:end]..., right.args[2:end]...))
-    elseif right.args[1] isa AbstractConstant
-        return Multiply((right.args[1], left.args..., right.args[2:end]...))
-    end
-    Multiply(left.args..., right.args...)
-end
-
-Multiply(left::Evaluable, right::Zeros) = Multiply(right, left)
-function Multiply(left::Zeros, right::Evaluable)
-    newsize = broadcast_shape(size(left), size(right))
-    newtype = promote_type(eltype(left), eltype(right))
-    Zeros(newtype, newsize...)
-end
-
-# TODO: These are not sufficient
-Multiply(left::Inflate, right::Inflate) =
-    Inflate(Multiply(left.arg, right), left.indices, left.newsize, left.axis)
-Multiply(left::Inflate, right::Evaluable) =
-    Inflate(Multiply(left.arg, right), left.indices, left.newsize, left.axis)
-Multiply(left::Evaluable, right::Inflate) =
-    Inflate(Multiply(left, right.arg), right.indices, right.newsize, right.axis)
 
 Negate(self::AbstractConstant) = convert(Evaluable, -valueof(self))
 

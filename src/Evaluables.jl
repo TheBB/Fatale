@@ -108,6 +108,7 @@ include("evaluables/compilation.jl")
 include("evaluables/basic.jl")
 include("evaluables/constants.jl")
 include("evaluables/definitions.jl")
+include("evaluables/arithmetic.jl")
 include("evaluables/contract.jl")
 
 include("evaluables/utility.jl")
