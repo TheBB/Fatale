@@ -118,6 +118,7 @@ function Base.reshape(self::Evaluable, newsize...)
     end
     @assert all(k != (:) for k in newsize)
     @assert prod(newsize) == prod(size(self))
+    Tuple(newsize) == size(self) && return self
     Reshape(self, newsize...)
 end
 
@@ -285,7 +286,7 @@ Power(self::Power, exp) = Power(self.arg, self.exp + exp)
 Reciprocal(self::AbstractConstant) = convert(Evaluable, 1 ./ valueof(self))
 Reciprocal(self::Reciprocal) = self.arg
 
-Reshape(self::Reshape, args...) = Reshape(self.arg, args...)
+Reshape(self::Reshape, args...) = reshape(self.arg, args...)
 Reshape(self::AbstractConstant, args...) = convert(Evaluable, reshape(valueof(self), args...))
 
 function Reshape(self::Inflate, newsize...)

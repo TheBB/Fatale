@@ -204,3 +204,26 @@ end
     @test a1 .* z3 == Zeros(3,4)
     @test a1 .* z4 == Zeros(3,4,2)
 end
+
+
+@testset "Reshape" begin
+    Random.seed!(201707271656)
+
+    a = DummyConstant(@SArray zeros(3,4,5))
+    r1 = reshape(a, 6, 2, 5)
+
+    # Reshape of reshape is combined
+    r2 = reshape(r1, 12, 1, 5)
+    @test r2 isa Evaluables.Reshape
+    @test r2.arg isa DummyConstant
+
+    # Reshape with same size is a no-op
+    r3 = reshape(a, 3, 4, 5)
+    @test r3 isa DummyConstant
+
+    # Reshape of constant is a constant
+    c = Constant(@SArray rand(3,5))
+    r4 = reshape(c, 15)
+    @test r4 isa Constant
+    @test Evaluables.valueof(r4) == reshape(Evaluables.valueof(c), 15)
+end
