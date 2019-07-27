@@ -393,6 +393,7 @@ end
 @generated function (self::__Sum{D,S})(arg) where {D,S}
     D = collect(D)
     tempsize = Tuple(i in D ? 1 : k for (i, k) in enumerate(size(arg)))
+    indexer = LinearIndices(size(arg))
 
     # We'd like to just call the StaticArrays implementation, but it
     # can cause allocations
@@ -402,7 +403,7 @@ end
         exprs = Expr[]
         for px in Base.product((1:size(arg, d) for d in D)...)
             ix[D] = collect(px)
-            push!(exprs, :(arg[$(ix...)]))
+            push!(exprs, :(arg[$(indexer[ix...])]))
         end
         push!(sums, :(+($(exprs...))))
     end
