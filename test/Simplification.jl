@@ -129,6 +129,8 @@ end
 
 
 @testset "Multiply" begin
+    Random.seed!(201707271656)
+
     a1 = DummyConstant(@SArray [1,0,0])
     a2 = DummyConstant(@SArray [2,0,0])
     c1 = Constant(@SArray [4,0,0])
@@ -181,4 +183,15 @@ end
     q = c4 .* c5
     @test q isa Constant
     @test Evaluables.valueof(q) == [5, 12, 21]
+
+    a1 = DummyConstant(@SArray rand(3,4))
+    z1 = Zeros(1,4)
+    z2 = Zeros(3,1)
+    z3 = Zeros(3,4)
+    z4 = Zeros(3,4,2)
+
+    @test a1 .* z1 == Zeros(3,4)
+    @test a1 .* z2 == Zeros(3,4)
+    @test a1 .* z3 == Zeros(3,4)
+    @test a1 .* z4 == Zeros(3,4,2)
 end

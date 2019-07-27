@@ -248,6 +248,14 @@ function Multiply(left::Multiply, right::Multiply)
     Multiply(left.args..., right.args...)
 end
 
+Multiply(left::Evaluable, right::Zeros) = Multiply(right, left)
+function Multiply(left::Zeros, right::Evaluable)
+    newsize = broadcast_shape(size(left), size(right))
+    newtype = promote_type(eltype(left), eltype(right))
+    Zeros(newtype, newsize...)
+end
+
+# TODO: These are not sufficient
 Multiply(left::Inflate, right::Inflate) =
     Inflate(Multiply(left.arg, right), left.indices, left.newsize, left.axis)
 Multiply(left::Inflate, right::Evaluable) =
