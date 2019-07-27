@@ -6,12 +6,19 @@
     EvalArgs()
 
 A special Evaluable that just returns the evaluation arguments in raw
-form. This is the only evaluable that receives undeclared arguments.
+form. This is typically the only evaluable that receives undeclared
+arguments.
 """
 struct EvalArgs <: Evaluable{_Any} end
+
 codegen(::EvalArgs) = __EvalArgs()
 struct __EvalArgs end
 @inline (::__EvalArgs)(arg) = arg
+
+# This makes EvalArgs 'special', passing it the evaluation arguments
+# directly. Other evaluables that need evaluation arguments should
+# depend on EvalArgs instead of replicating this behaviour.
+pass_evalargs(::Type{__EvalArgs}) = true
 
 
 """

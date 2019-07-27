@@ -35,7 +35,22 @@ An object that, when evaluated, produces a value of type T.
 """
 abstract type Evaluable{T <: Result} end
 
+"""
+    arguments(::Evaluable)
+
+Return a list of evaluables forming the arguments to the given
+evaluable.
+"""
 arguments(::Evaluable) = Evaluable[]
+
+"""
+    pass_evalargs(::Type)
+
+Return true if the compiled evaluable type should be passed the
+evaluation arguments as the first parameter.  This should usually only
+be true for the __EvalArgs type.
+"""
+pass_evalargs(::Type) = false
 
 # Some type aliases that will be useful
 const ArrayEvaluable = Evaluable{_Array}
