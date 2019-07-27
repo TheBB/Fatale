@@ -173,12 +173,13 @@ end
 # Contraction involving zero becomes zero
 Contract(left::Evaluable, right::Zeros, l, r, t) = Contract(right, left, r, l, t)
 function Contract(left::Zeros, right::Evaluable, l, r, t)
-    newsize = _contract_size([left, right], [l, t], t)
+    newsize = _contract_size([left, right], [l, r], t)
     newtype = promote_type(eltype(left), eltype(right))
     Zeros(newtype, newsize...)
 end
 
 # Contraction must commute with inflation
+Contract(left::Evaluable, right::Inflate, l, r, t) = Contract(right, left, r, l, t)
 function Contract(left::Inflate, right::Evaluable, l, r, t)
     infaxis = left.axis
     infid = l[infaxis]

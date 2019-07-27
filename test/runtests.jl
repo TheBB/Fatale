@@ -60,6 +60,8 @@ function isapprox_missing(a::AbstractArray{Union{A,Missing}}, b::AbstractArray{U
     size(a) == size(b) && all(isapprox_missing(aa, bb) for (aa, bb) in zip(a, b))
 end
 
+noinflate(f) = @test !(f isa Inflate)
+
 
 # ==============================================================================
 # Some useful macros

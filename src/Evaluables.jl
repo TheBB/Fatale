@@ -52,6 +52,18 @@ be true for the __EvalArgs type.
 """
 pass_evalargs(::Type) = false
 
+"""
+    map(f, ::Evaluable)
+
+Call *f* for each evaluable in the tree, breadth first.
+"""
+function Base.map(f, self::Evaluable)
+    f(self)
+    for arg in arguments(self)
+        map(f, arg)
+    end
+end
+
 # Some type aliases that will be useful
 const ArrayEvaluable = Evaluable{_Array}
 const CoordsEvaluable = Evaluable{_Coords}

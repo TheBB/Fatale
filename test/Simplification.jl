@@ -98,6 +98,33 @@ end
     @test q.args[2] isa DummyConstant
     @test q.args[3] isa DummyConstant
     @test Evaluables.valueof(q.args[1]) ≈ reshape(d1, 2, 2, 1, 1) .* reshape(d2, 1, 1, 2, 2)
+
+    z = Zeros(2,5,7)
+    q = a1 * z
+    @test q == Zeros(2,5,7)
+
+    z = Zeros(5,1,2)
+    q = z * a2
+    @test q == Zeros(5,1,2)
+
+    i1 = Inflate(DummyConstant(@SArray rand(2,2)), DummyConstant(@SArray [4,5]), 9, 2)
+    i2 = Inflate(DummyConstant(@SArray rand(4,2)), DummyConstant(@SArray [4,5]), 7, 2)
+    a1 = DummyConstant(@SArray rand(9,4))
+
+    # Contraction along inflated axis
+    q = i1 * a1
+    @test q isa Contract
+    @test size(q) == (2,4)
+    map(noinflate, q)
+
+    # Contraction along non-inflated axis
+    q = a1 * i2
+    @test q isa Inflate
+    @test q.arg isa Contract
+    @test q.newsize == 7
+    @test q.axis == 2
+    @test size(q) == (9,7)
+    map(noinflate, q.arg)
 end
 
 
