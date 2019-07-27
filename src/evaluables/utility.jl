@@ -211,6 +211,18 @@ function Add(left::Add, right::Add)
     Add((left.args..., right.args...))
 end
 
+Add(left::Evaluable, right::Zeros) = Add(right, left)
+function Add(left::Zeros, right::Evaluable)
+    # TODO: Add a promote_type evaluable
+    @assert eltype(left) == eltype(right)
+
+    # TODO Add a repmat evaluable or something similar
+    newsize = broadcast_shape(size(left), size(right))
+    @assert newsize == size(right)
+
+    right
+end
+
 Constant(value::Real) = Constant(Scalar(value))
 Constant(value::AbstractArray) = Constant(SArray{Tuple{size(value)...}, eltype(value)}(value))
 

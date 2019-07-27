@@ -61,6 +61,15 @@
     q = c4 .+ c5
     @test q isa Constant
     @test Evaluables.valueof(q) == [6, 8, 10]
+
+    a1 = DummyConstant(@SArray rand(3,4))
+    z1 = Zeros(1,4)
+    z2 = Zeros(3,1)
+    z3 = Zeros(3,4)
+
+    @test a1 .+ z1 === a1
+    @test a1 .+ z2 === a1
+    @test a1 .+ z3 === a1
 end
 
 
