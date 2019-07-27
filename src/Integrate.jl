@@ -4,19 +4,23 @@ import ..Evaluables:
     OptimizedEvaluable, OptimizedBlockEvaluable, OptimizedSparseEvaluable,
     ArrayEvaluable, optimize
 
-import Strided: UnsafeStridedView, sreshape
-import SparseArrays: sparse!, dropzeros!, nnz, sparse
+import Strided: UnsafeStridedView, sreshape, StridedView
+import SparseArrays: sparse!, dropzeros!, nnz
 
 export integrate, to
 
 
-function _sparse(I, J, V, m, n)
-    A = sparse(I, J, V, m, n)
-    dropzeros!(A)
-end
-
-
 function _sparse!(I, J, V, m, n)
+    if length(I) < n + 1
+        r = length(I)+1
+        resize!(I, n+1)
+        resize!(J, n+1)
+        resize!(V, n+1)
+        I[r:end] .= one(eltype(V))
+        J[r:end] .= one(eltype(V))
+        V[r:end] .= zero(eltype(V))
+    end
+
     csrrowptr = Vector{Int}(undef, m+1)
     csrcolval = Vector{Int}(undef, length(I))
     csrnzval = Vector{eltype(V)}(undef, length(I))
@@ -84,8 +88,7 @@ function integrate(func::OptimizedSparseEvaluable{T,2}, domain, quadrule) where 
         i += l
     end
 
-    _sparse(I, J, V, size(func)...)
-    # _sparse!(I, J, V, size(func)...)
+    _sparse!(I, J, V, size(func)...)
 end
 
 function _integrate(block::OptimizedBlockEvaluable{2}, domain, quadrule, I, J, V)
