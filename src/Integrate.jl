@@ -75,7 +75,6 @@ function integrate(func::OptimizedSparseEvaluable{T,2}, domain, quadrule) where 
     I = Vector{Int}(undef, nentries * nelems)
     J = Vector{Int}(undef, nentries * nelems)
     V = zeros(T, nentries * nelems)
-    (pts, wts) = quadrule
 
     i = 1
     for block in func.blocks

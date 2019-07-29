@@ -7,12 +7,12 @@ using StaticArrays
 
 using ..Utils
 
-export AbstractTransform, todims, fromdims
+export AbstractTransform, todims, fromdims, apply
 export Empty, Affine
 export shift, updim
 
 
-const Coords{N,T,M} = NamedTuple{(:point, :grad), Tuple{SVector{N,T}, SMatrix{N,N,T,M}}}
+const Coords{P,G} = NamedTuple{(:point, :grad), Tuple{P,G}}
 
 
 """
@@ -43,6 +43,13 @@ abstract type AbstractTransform{From, To, R<:Real} end
 @inline fromdims(t::T) where T<:AbstractTransform = fromdims(T)
 @inline todims(t::T) where T<:AbstractTransform = todims(T)
 @inline Base.eltype(t::T) where T<:AbstractTransform = eltype(T)
+
+# This is a workaround until we can define functions on abstract types
+# Mostly just to convert a nothing gradient into the identity matrix
+@inline apply(trf::AbstractTransform, x) = trf(x)
+@inline function apply(trf::AbstractTransform, x::Coords{SVector{N,T}, Nothing}) where {N,T}
+    trf((point=x.point, grad=SMatrix{N,N,T}(I)))
+end
 
 
 """

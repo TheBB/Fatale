@@ -8,8 +8,7 @@
     initial = @SVector rand(3)
     @test trf(initial) == mx * initial + vec
 
-    grad = SMatrix{3,3,Float64}(I)
-    coords = trf((point=initial, grad=grad))
+    coords = apply(trf, (point=initial, grad=nothing))
     @test coords.point == mx * initial + vec
     @test coords.grad == mx
 
@@ -17,11 +16,10 @@
         mx = @SMatrix rand(3,3)
         vec = @SVector rand(3)
         initial = @SVector rand(3)
-        grad = SMatrix{3,3,Float64}(I)
         @bench begin
             trf = Affine($mx, $vec)
             trf($initial)
-            trf((point=$initial, grad=$grad))
+            apply(trf, (point=$initial, grad=nothing))
         end
     end
 end
@@ -34,18 +32,16 @@ end
     initial = @SVector rand(1)
     @test trf(initial) == [5.0, initial[1] + 5.0]
 
-    grad = SMatrix{1,1,Float64}(I)
-    coords = trf((point=initial, grad=grad))
+    coords = apply(trf, (point=initial, grad=nothing))
     @test coords.point == [5.0, initial[1] + 5.0]
     @test coords.grad == [0 1; 1 0]
 
     @noallocs begin
         initial = @SVector rand(1)
-        grad = SMatrix{1,1,Float64}(I)
         @bench begin
             trf = Empty(2) ∘ shift(SVector(4.0, 5.0)) ∘ updim(Val(2), 1, 1.0)
             trf($initial)
-            trf((point=$initial, grad=$grad))
+            apply(trf, (point=$initial, grad=nothing))
         end
     end
 end
@@ -58,18 +54,16 @@ end
     initial = @SVector rand(4)
     @test trf(initial) == initial
 
-    grad = SMatrix{4,4,Float64}(I)
-    coords = trf((point=initial, grad=grad))
+    coords = apply(trf, (point=initial, grad=nothing))
     @test coords.point == initial
     @test coords.grad == I
 
     @noallocs begin
         initial = @SVector rand(4)
-        grad = SMatrix{4,4,Float64}(I)
         @bench begin
             trf = Empty{4, Float64}()
             trf($initial)
-            trf((point=$initial, grad=$grad))
+            apply(trf, (point=$initial, grad=nothing))
         end
     end
 end
@@ -83,19 +77,17 @@ end
     initial = @SVector rand(4)
     @test trf(initial) == initial + offset
 
-    grad = SMatrix{4,4,Float64}(I)
-    coords = trf((point=initial, grad=grad))
+    coords = apply(trf, (point=initial, grad=nothing))
     @test coords.point == initial + offset
     @test coords.grad == I
 
     @noallocs begin
         initial = @SVector rand(4)
         offset = @SVector rand(4)
-        grad = SMatrix{4,4,Float64}(I)
         @bench begin
             trf = Transforms.shift($offset)
             trf($initial)
-            trf((point=$initial, grad=$grad))
+            apply(trf, (point=$initial, grad=nothing))
         end
     end
 end
@@ -149,12 +141,11 @@ end
 
     @noallocs begin
         initial = @SVector rand(2)
-        igrad = SMatrix{2,2}(1.0, 2.0, 3.0, 4.0)
         value = rand(Float64)
         @bench begin
             trf = updim(Val(3), 2, $value)
             trf($initial)
-            trf((point=$initial, grad=$igrad))
+            apply(trf, (point=$initial, grad=nothing))
         end
     end
 
