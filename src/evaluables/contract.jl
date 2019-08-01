@@ -35,36 +35,7 @@ function codegen(self::Contract)
     inds = Tuple(map(Tuple, self.indices))
     target = Tuple(self.target)
     storage = @MArray zeros(eltype(self), size(self)...)
-    __Contract{inds, target}(storage)
-end
-
-struct __Contract{I,Ti,T}
-    val :: T
-    __Contract{I,Ti}(val::T) where {I,Ti,T} = new{I,Ti,T}(val)
-end
-
-@generated function (self::__Contract{I,Ti})(args...) where {I,Ti}
-    dims = _sizedict(args, I)
-    dim_order = Dict(axis => num for (num, axis) in enumerate(keys(dims)))
-
-    codes = Expr[]
-    for indices in product((1:n for n in values(dims))...)
-        inputs = [
-            :(args[$i][$((indices[dim_order[ax]] for ax in ind)...)])
-            for (i, ind) in enumerate(I)
-        ]
-        product = :(*($(inputs...)))
-        target = :(self.val[$((indices[dim_order[ax]] for ax in Ti)...)])
-        push!(codes, :($target += $product))
-    end
-
-    quote
-        @inbounds begin
-            self.val .= zero(eltype(self.val))
-            $(codes...)
-        end
-        SArray(self.val)
-    end
+    CplContract{inds, target}(storage)
 end
 
 
@@ -73,7 +44,7 @@ function _do_contract(left, right, l, r, t)
     newsize = _contract_size((left, right), (l, r), t)
     newtype = promote_type(eltype(left), eltype(right))
     ret = @MArray zeros(newtype, newsize...)
-    func = __Contract{(Tuple(l), Tuple(r)), Tuple(t)}(ret)
+    func = CplContract{(Tuple(l), Tuple(r)), Tuple(t)}(ret)
     func(left, right)
 end
 

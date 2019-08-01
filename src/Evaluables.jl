@@ -44,18 +44,9 @@ evaluable.
 arguments(::Evaluable) = Evaluable[]
 
 """
-    pass_evalargs(::Type)
-
-Return true if the compiled evaluable type should be passed the
-evaluation arguments as the first parameter.  This should usually only
-be true for the __EvalArgs type.
-"""
-pass_evalargs(::Type) = false
-
-"""
     map(f, ::Evaluable)
 
-Call *f* for each evaluable in the tree, breadth first.
+Call *f* for each evaluable in the tree.
 """
 function Base.map(f, self::Evaluable)
     f(self)
@@ -88,6 +79,7 @@ Base.ndims(::CoordsEvaluable) = throw("not implemented")
 # Supertype for all evaluables with constant value
 abstract type AbstractConstant <: ArrayEvaluable end
 valueof(::AbstractConstant) = throw("not implemented")
+codegen(self::AbstractConstant) = CplConstant(valueof(self))
 
 
 """

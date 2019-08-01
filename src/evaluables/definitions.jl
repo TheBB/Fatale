@@ -74,15 +74,7 @@ function Base.size(self::GetIndex)
     Tuple(ret)
 end
 
-codegen(self::GetIndex) = __GetIndex()
-struct __GetIndex end
-@generated function (self::__GetIndex)(arg, indices...)
-    inds = Expr[:(indices[$i]) for i in 1:length(indices)]
-    quote
-        @_inline_meta
-        @inbounds arg[$(inds...)]
-    end
-end
+codegen(self::GetIndex) = CplGetIndex()
 
 
 """
@@ -108,9 +100,7 @@ Base.eltype(self::Inv) = let t = eltype(self.arg)
     t <: Integer ? Float64 : t
 end
 
-codegen(self::Inv) = __Inv()
-struct __Inv end
-@inline (::__Inv)(arg) = inv(arg)
+codegen(self::Inv) = CplInv()
 
 
 """
@@ -132,30 +122,7 @@ Monomials(arg, degree) = Monomials(arg, degree, 0)
 arguments(self::Monomials) = Evaluable[self.arg]
 Base.size(self::Monomials) = (size(self.arg)..., self.padding + self.degree + 1)
 
-codegen(self::Monomials) = __Monomials(self.degree, self.padding, eltype(self), size(self))
-struct __Monomials{D,P,T}
-    val :: T
-    function __Monomials(D, P, T, sz)
-        val = @MArray zeros(T, sz...)
-        new{D,P,typeof(val)}(val)
-    end
-end
-@generated function (self::__Monomials{D,P})(arg) where {D,P}
-    colons = [Colon() for _ in 1:ndims(arg)]
-    codes = [
-        :(self.val[$(colons...), $(P+i+1)] .= self.val[$(colons...), $(P+i)] .* arg)
-        for i in 1:D
-    ]
-
-    quote
-        @inbounds begin
-            self.val[$(colons...), 1:$P] .= $(zero(eltype(arg)))
-            self.val[$(colons...), $(P+1)] .= $(one(eltype(arg)))
-            $(codes...)
-        end
-        SArray(self.val)
-    end
-end
+codegen(self::Monomials) = CplMonomials(self.degree, self.padding, eltype(self), size(self))
 
 
 """
@@ -170,9 +137,7 @@ end
 arguments(self::Negate) = Evaluable[self.arg]
 Base.size(self::Negate) = size(self.arg)
 
-codegen(self::Negate) = __Negate()
-struct __Negate end
-@inline (::__Negate)(arg) = -arg
+codegen(self::Negate) = CplNegate()
 
 
 """
@@ -194,20 +159,7 @@ end
 arguments(self::PermuteDims) = Evaluable[self.arg]
 Base.size(self::PermuteDims) = Tuple(size(self.arg, i) for i in self.perm)
 
-codegen(self::PermuteDims) = __PermuteDims{self.perm}()
-struct __PermuteDims{I} end
-@generated function (::__PermuteDims{I})(arg) where I
-    insize = size(arg)
-    outsize = Tuple(size(arg, i) for i in I)
-
-    lininds = LinearIndices(insize)
-    indices = (lininds[(cind[i] for i in I)...] for cind in CartesianIndices(outsize))
-    exprs = (:(arg[$i]) for i in indices)
-    quote
-        @_inline_meta
-        SArray{Tuple{$(outsize...)}}($(exprs...))
-    end
-end
+codegen(self::PermuteDims) = CplPermuteDims{self.perm}()
 
 
 """
@@ -231,10 +183,7 @@ end
 arguments(self::Power) = Evaluable[self.arg]
 Base.size(self::Power) = size(self.arg)
 
-codegen(self::Power) = __Power{self.exp}()
-struct __Power{P} end
-@inline (::__Power{P})(arg::Scalar) where P = Scalar(arg[] ^ P)
-@inline (::__Power{P})(arg) where P = arg .^ P
+codegen(self::Power) = CplPower{self.exp}()
 
 
 """
@@ -249,10 +198,7 @@ end
 arguments(self::Reciprocal) = Evaluable[self.arg]
 Base.size(self::Reciprocal) = size(self.arg)
 
-codegen(self::Reciprocal) = __Reciprocal()
-struct __Reciprocal end
-@inline (::__Reciprocal)(arg::Scalar) = Scalar(one(eltype(arg)) / arg[])
-@inline (::__Reciprocal)(arg) = one(eltype(arg)) ./ arg
+codegen(self::Reciprocal) = CplReciprocal()
 
 
 """
@@ -269,12 +215,7 @@ end
 arguments(self::Reshape) = Evaluable[self.arg]
 Base.size(self::Reshape) = self.shape
 
-codegen(self::Reshape) = __Reshape{size(self)}()
-struct __Reshape{S} end
-@generated (self::__Reshape{S})(arg) where S = quote
-    @_inline_meta
-    SArray{Tuple{$(S...)}}(arg)
-end
+codegen(self::Reshape) = CplReshape{size(self)}()
 
 
 """
@@ -289,10 +230,7 @@ end
 arguments(self::Sqrt) = Evaluable[self.arg]
 Base.size(self::Sqrt) = size(self.arg)
 
-codegen(self::Sqrt) = __Sqrt()
-struct __Sqrt end
-@inline (::__Sqrt)(arg) = sqrt.(arg)
-@inline (::__Sqrt)(arg::Scalar) = Scalar(sqrt(arg[1]))
+codegen(self::Sqrt) = CplSqrt()
 
 
 """
@@ -324,27 +262,4 @@ function Base.size(self::Sum)
     end
 end
 
-codegen(self::Sum) = __Sum(self.dims, size(self))
-struct __Sum{D,S}
-    __Sum(D,S) = new{D,S}()
-end
-@generated function (self::__Sum{D,S})(arg) where {D,S}
-    D = collect(D)
-    tempsize = Tuple(i in D ? 1 : k for (i, k) in enumerate(size(arg)))
-    indexer = LinearIndices(size(arg))
-
-    # We'd like to just call the StaticArrays implementation, but it
-    # can cause allocations
-    sums = Expr[]
-    for i in Base.product((1:k for k in tempsize)...)
-        ix = collect(i)
-        exprs = Expr[]
-        for px in Base.product((1:size(arg, d) for d in D)...)
-            ix[D] = collect(px)
-            push!(exprs, :(arg[$(indexer[ix...])]))
-        end
-        push!(sums, :(+($(exprs...))))
-    end
-
-    :(@inbounds SArray{Tuple{$(S...)}}($(sums...)))
-end
+codegen(self::Sum) = CplSum{self.dims, size(self)}()

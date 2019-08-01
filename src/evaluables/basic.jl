@@ -10,15 +10,7 @@ form. This is typically the only evaluable that receives undeclared
 arguments.
 """
 struct EvalArgs <: Evaluable{_Any} end
-
-codegen(::EvalArgs) = __EvalArgs()
-struct __EvalArgs end
-@inline (::__EvalArgs)(arg) = arg
-
-# This makes EvalArgs 'special', passing it the evaluation arguments
-# directly. Other evaluables that need evaluation arguments should
-# depend on EvalArgs instead of replicating this behaviour.
-pass_evalargs(::Type{__EvalArgs}) = true
+codegen(::EvalArgs) = CplEvalArgs()
 
 
 """
@@ -72,14 +64,7 @@ Base.size(self::Funcall{_Array}) = self.size
 Base.ndims(self::Funcall{_Coords}) = self.ndims
 Base.eltype(self::Funcall{<:Union{_Array,_Coords}}) = self.eltype
 
-codegen(self::Funcall) = __Funcall{self.funcname, self.parameter}()
-struct __Funcall{F,A} end
-@generated function (::__Funcall{F,A})(arg) where {F,A}
-    quote
-        @_inline_meta
-        $F(arg, :($A))
-    end
-end
+codegen(self::Funcall) = CplFuncall{self.funcname, self.parameter}()
 
 
 """
@@ -96,6 +81,4 @@ Base.eltype(self::ApplyTrans) = eltype(self.coords)
 Base.ndims(self::ApplyTrans) = ndims(self.coords)
 arguments(self::ApplyTrans) = Evaluable[self.transform, self.coords]
 
-codegen(self::ApplyTrans) = __ApplyTrans()
-struct __ApplyTrans end
-@inline (::__ApplyTrans)(trans, point) = apply(trans, point)
+codegen(self::ApplyTrans) = CplApplyTrans()

@@ -12,12 +12,6 @@ Base.ndims(self::Constant) = ndims(self.value)
 Base.size(self::Constant) = size(self.value)
 valueof(self::Constant) = self.value
 
-codegen(self::Constant) = __Constant(self.value)
-struct __Constant{T}
-    val :: T
-end
-@inline (self::__Constant)() = self.val
-
 
 """
     OneTo(stop)
@@ -31,10 +25,6 @@ end
 Base.eltype(::OneTo) = Int
 Base.size(self::OneTo) = (self.stop,)
 valueof(self::OneTo) = SOneTo(self.stop)
-
-codegen(self::OneTo) = __OneTo{self.stop}()
-struct __OneTo{S} end
-@inline (::__OneTo{S})() where S = SOneTo(S)
 
 
 """
@@ -51,10 +41,6 @@ Base.eltype(self::FUnitRange) = Int
 Base.size(self::FUnitRange) = (self.stop - self.start + 1,)
 valueof(self::FUnitRange) = SUnitRange(self.start, self.stop)
 
-codegen(self::FUnitRange) = __FUnitRange{self.start, self.stop}()
-struct __FUnitRange{S,E} end
-@inline (::__FUnitRange{S,E})() where {S,E}  = SUnitRange(S,E)
-
 
 """
     Zeros(T=Float64, dims...)
@@ -70,8 +56,4 @@ end
 Zeros(dims::Int...) = Zeros(Float64, dims...)
 Base.eltype(self::Zeros) = self.eltype
 Base.size(self::Zeros) = self.dims
-valueof(self::Zeros) = zero(SArray{Tuple{size(self)...}, eltype(self), ndims(self), length(self)})
-
-codegen(self::Zeros) = __Zeros{SArray{Tuple{size(self)...}, eltype(self), ndims(self), length(self)}}()
-struct __Zeros{T} end
-@inline (self::__Zeros{T})() where T = zero(T)
+valueof(self::Zeros) = @SArray zeros(eltype(self), size(self)...)

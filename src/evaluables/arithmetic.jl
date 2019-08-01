@@ -17,14 +17,6 @@ end
 arguments(self::CommArith) = self.args
 Base.size(self::CommArith) = self.dims
 
-struct __CommArith{F} end
-@generated function (self::__CommArith{F})(args...) where F
-    argcodes = [:(args[$i]) for i in 1:length(args)]
-    quote
-        $F($(argcodes...))
-    end
-end
-
 
 # Outer constructors with purpose:
 # - CommAriths of other CommAriths become bigger CommAriths
@@ -107,7 +99,7 @@ end
 
 Add(args...) = CommArith(Add, args...)
 _compute(::Type{Add}, left, right) = left .+ right
-codegen(self::Add) = __CommArith{:.+}()
+codegen(self::Add) = CplCommArith{:.+}()
 
 function Add(left::Zeros, right::ArrayEvaluable)
     # TODO: Add a promote_type evaluable
@@ -134,7 +126,7 @@ end
 
 Multiply(args...) = CommArith(Multiply, args...)
 _compute(::Type{Multiply}, left, right) = left .* right
-codegen(self::Multiply) = __CommArith{:.*}()
+codegen(self::Multiply) = CplCommArith{:.*}()
 
 function Multiply(left::Zeros, right::ArrayEvaluable)
     newsize = broadcast_shape(size(left), size(right))

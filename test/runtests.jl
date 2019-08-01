@@ -44,7 +44,7 @@ end
 Base.eltype(self::DummyConstant) = eltype(self.value)
 Base.ndims(self::DummyConstant) = ndims(self.value)
 Base.size(self::DummyConstant) = size(self.value)
-Evaluables.codegen(self::DummyConstant) = Evaluables.__Constant(self.value)
+Evaluables.codegen(self::DummyConstant) = Evaluables.CplConstant(self.value)
 
 
 # ==============================================================================

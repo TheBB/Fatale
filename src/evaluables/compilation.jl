@@ -1,7 +1,153 @@
 # ==============================================================================
+# Compilation blocks
+
+# Supertype of all compilation blocks
+abstract type CplBlock end
+
+# Supertype of compilation blocks that are 'raw'.
+# These receive the evaluation args as the first parameter, and the remaining
+# arguments as targeted evaluation sequences.
+abstract type RawCplBlock end
+
+struct CplEvalArgs <: RawCplBlock end
+@inline (::CplEvalArgs)(arg) = arg
+
+struct CplFuncall{F,A} <: CplBlock end
+@generated (::CplFuncall{F,A})(arg) where {F,A} = quote
+    @_inline_meta
+    $F(arg, :($A))
+end
+
+struct CplApplyTrans <: CplBlock end
+@inline (::CplApplyTrans)(trans, coords) = apply(trans, coords)
+
+struct CplConstant{T} <: CplBlock
+    val :: T
+end
+@inline (self::CplConstant)() = self.val
+
+struct CplGetIndex end
+@inline (::CplGetIndex)(arg, indices...) = @inbounds arg[indices...]
+
+struct CplInv end
+@inline (::CplInv)(arg) = inv(arg)
+
+struct CplNegate end
+@inline (::CplNegate)(arg) = -arg
+
+struct CplPower{P} end
+@inline (::CplPower{P})(arg::Scalar) where P = Scalar(arg[] ^ P) # Remove when StaticArrays bug fixed
+@inline (::CplPower{P})(arg) where P = arg .^ P
+
+struct CplReciprocal end
+@inline (::CplReciprocal)(arg::Scalar) = Scalar(one(eltype(arg)) / arg[]) # Remove when StaticArrays bug fixed
+@inline (::CplReciprocal)(arg) = one(eltype(arg)) ./ arg
+
+struct CplReshape{S} end
+@inline (::CplReshape{S})(arg) where S = SArray{Tuple{S...}}(arg)
+
+struct CplSqrt end
+@inline (::CplSqrt)(arg::Scalar) = Scalar(sqrt(arg[])) # Remove when StaticArrays bug fixed
+@inline (::CplSqrt)(arg) = sqrt.(arg)
+
+struct CplCommArith{F} end
+@generated (::CplCommArith{F})(args...) where F = quote
+    @_inline_meta
+    $F(args...)
+end
+
+struct CplMonomials{D,P,T}
+    val :: T
+    CplMonomials(degree, padding, eltype, size) = let val = @MArray zeros(eltype, size...)
+        new{degree, padding, typeof(val)}(val)
+    end
+end
+@generated function (self::CplMonomials{D,P})(arg) where {D,P}
+    colons = [Colon() for _ in 1:ndims(arg)]
+    codes = [
+        :(self.val[$(colons...), $(P+i+1)] .= self.val[$(colons...), $(P+i)] .* arg)
+        for i in 1:D
+    ]
+
+    quote
+        @inbounds begin
+            self.val[$(colons...), 1:$P] .= $(zero(eltype(arg)))
+            self.val[$(colons...), $(P+1)] .= $(one(eltype(arg)))
+            $(codes...)
+        end
+        SArray(self.val)
+    end
+end
+
+struct CplPermuteDims{I} end
+@generated function (::CplPermuteDims{I})(arg) where I
+    insize = size(arg)
+    outsize = Tuple(size(arg, i) for i in I)
+
+    lininds = LinearIndices(insize)
+    indices = (lininds[(cind[i] for i in I)...] for cind in CartesianIndices(outsize))
+    exprs = (:(arg[$i]) for i in indices)
+    quote
+        @_inline_meta
+        SArray{Tuple{$(outsize...)}}($(exprs...))
+    end
+end
+
+struct CplSum{D,S} end
+@generated function (self::CplSum{D,S})(arg) where {D,S}
+    D = collect(D)
+    tempsize = Tuple(i in D ? 1 : k for (i, k) in enumerate(size(arg)))
+    indexer = LinearIndices(size(arg))
+
+    # We'd like to just call the StaticArrays implementation, but it
+    # can cause allocations
+    sums = Expr[]
+    for i in Base.product((1:k for k in tempsize)...)
+        ix = collect(i)
+        exprs = Expr[]
+        for px in Base.product((1:size(arg, d) for d in D)...)
+            ix[D] = collect(px)
+            push!(exprs, :(arg[$(indexer[ix...])]))
+        end
+        push!(sums, :(+($(exprs...))))
+    end
+
+    :(@inbounds SArray{Tuple{$(S...)}}($(sums...)))
+end
+
+struct CplContract{I,Ti,T}
+    val :: T
+    CplContract{I,Ti}(val::T) where {I,Ti,T} = new{I,Ti,T}(val)
+end
+@generated function (self::CplContract{I,Ti,T})(args...) where {I,Ti,T}
+    dims = _sizedict(args, I)
+    dim_order = Dict(axis => num for (num, axis) in enumerate(keys(dims)))
+
+    codes = Expr[]
+    for indices in product((1:n for n in values(dims))...)
+        inputs = [
+            :(args[$i][$((indices[dim_order[ax]] for ax in ind)...)])
+            for (i, ind) in enumerate(I)
+        ]
+        product = :(*($(inputs...)))
+        target = :(self.val[$((indices[dim_order[ax]] for ax in Ti)...)])
+        push!(codes, :($target += $product))
+    end
+
+    quote
+        @inbounds begin
+            self.val .= $(zero(eltype(T)))
+            $(codes...)
+        end
+        SArray(self.val)
+    end
+end
+
+
+# ==============================================================================
 # Linearization
 
-# Internal structure for a single stage in a linearized evaluation # sequence
+# Internal structure for a single stage in a linearized evaluation sequence
 struct Stage
     func :: Evaluable
     index :: Int
@@ -62,7 +208,7 @@ result of the full evaluation sequence if not given.
 
     codes = Expr[]
     for (i, functype, sym, args) in zip(seq, K.parameters[seq], syms, argsyms)
-        if pass_evalargs(functype)
+        if functype <: RawCplBlock
             code = :(self.funcs[$i](evalargs, $(args...)))
         else
             code = :(self.funcs[$i]($(args...)))
