@@ -163,7 +163,7 @@ element_index(n) = element_data(_Array, :index, Int, (n,))
 _point(self::CoordsEvaluable) = Funcall(_Array, :getfield, self, :point, eltype(self), (ndims(self),))
 _grad(self::CoordsEvaluable) = Funcall(_Array, :getfield, self, :grad, eltype(self), (ndims(self),ndims(self)))
 
-local_coords(n) = argument(_Coords, :point, Float64, (n,))
+local_coords(n) = argument(_Coords, :coords, Float64, (n,))
 local_point(n) = _point(local_coords(n))
 local_grad(n) = _grad(local_coords(n))
 
