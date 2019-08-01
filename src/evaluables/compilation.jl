@@ -44,6 +44,9 @@ struct EvaluationSequence{I,K}
     end
 end
 
+Base.length(self::EvaluationSequence{I}) where I = length(I)
+
+
 """
     (::EvaluationSequence)([index::Val{k},] evalargs::NamedTuple)
 
@@ -92,6 +95,22 @@ function _sequence!(ret, I, tgt)
 end
 
 
+# Helper struct for bundling together an evaluation sequence and a target function index
+struct TargetedEvaluationSequence{S<:EvaluationSequence, I<:Val}
+    sequence :: S
+    target :: I
+end
+
+function TargetedEvaluationSequence(func::Evaluable)
+    sequence = EvaluationSequence(func)
+    TargetedEvaluationSequence(sequence, Val(length(sequence)))
+end
+
+@inline (self::TargetedEvaluationSequence)(evalargs::NamedTuple) = self.sequence(self.target, evalargs)
+
+pass_evalargs(::Type{TargetedEvaluationSequence}) = true
+
+
 # ==============================================================================
 # Optimized evaluables
 
@@ -118,16 +137,16 @@ optimize(self::AbstractOptimizedEvaluable) = self
 
 The most fundamental form of optimized evaluable.
 """
-struct OptimizedEvaluable{T,N,S,F<:EvaluationSequence} <: AbstractOptimizedEvaluable{T,N,S}
+struct OptimizedEvaluable{T,N,S,F<:TargetedEvaluationSequence} <: AbstractOptimizedEvaluable{T,N,S}
     sequence :: F
 
     function OptimizedEvaluable(func::ArrayEvaluable)
-        seq = EvaluationSequence(func)
+        seq = TargetedEvaluationSequence(func)
         new{eltype(func), ndims(func), size(func), typeof(seq)}(seq)
     end
 end
 
-codegen(self::OptimizedEvaluable) = self
+codegen(self::OptimizedEvaluable) = self.sequence
 
 """
     (func::OptimizedEvaluable)(evalargs::NamedTuple)
