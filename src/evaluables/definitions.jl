@@ -215,6 +215,9 @@ end
 
 arguments(self::Reciprocal) = Evaluable[self.arg]
 Base.size(self::Reciprocal) = size(self.arg)
+Base.eltype(self::Reciprocal) = let t = eltype(self.arg)
+    t <: Integer ? Float64 : t
+end
 
 codegen(self::Reciprocal) = CplReciprocal()
 
