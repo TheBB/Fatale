@@ -9,13 +9,16 @@ abstract type CplBlock end
 # arguments as targeted evaluation sequences.
 abstract type RawCplBlock end
 
-struct CplEvalArgs <: RawCplBlock end
-@inline (::CplEvalArgs)(arg) = arg
-
-struct CplFuncall{F,A} <: CplBlock end
-@generated (::CplFuncall{F,A})(arg) where {F,A} = quote
+struct CplEvalArg{T} <: RawCplBlock end
+@generated (::CplEvalArg{T})(arg) where T = quote
     @_inline_meta
-    $F(arg, :($A))
+    arg.$T
+end
+
+struct CplElementData{T} <: CplBlock end
+@generated (::CplElementData{T})(element) where T = quote
+    @_inline_meta
+    elementdata(element, Val(:($T)))
 end
 
 struct CplApplyTrans <: CplBlock end
@@ -26,8 +29,10 @@ struct CplConstant{T} <: CplBlock
 end
 @inline (self::CplConstant)() = self.val
 
-struct CplGetIndex end
-@inline (::CplGetIndex)(arg, indices...) = @inbounds arg[indices...]
+struct CplGetIndex{T} end
+(::Type{CplGetIndex})() = CplGetIndex{Nothing}()
+@inline (::CplGetIndex{Nothing})(arg, indices...) = @inbounds arg[indices...]
+@inline (::CplGetIndex{T})(arg) where T = @inbounds arg[T]
 
 struct CplInv end
 @inline (::CplInv)(arg) = inv(arg)

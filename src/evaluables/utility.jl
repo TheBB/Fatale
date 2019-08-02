@@ -152,24 +152,17 @@ LinearAlgebra.norm_sqr(self::ArrayEvaluable) = dot(self, self)
 # ==============================================================================
 # Convenience constructors
 
-argument(T, name, args...) = Funcall(T, :getfield, EvalArgs(), name, args...)
-element() = argument(_Element, :element)
-element_data(T, name, args...) = Funcall(T, :elementdata, element(), Val(name), args...)
+local_transform() = ElementData{_Transform}(:loctrans)
+global_transform() = ElementData{_Transform}(:globtrans)
+element_index(n) = ElementData{_Array}(:index; eltype=Int, size=(n,))
 
-local_transform() = element_data(_Transform, :loctrans)
-global_transform() = element_data(_Transform, :globtrans)
-element_index(n) = element_data(_Array, :index, Int, (n,))
-
-_point(self::CoordsEvaluable) = Funcall(_Array, :getfield, self, :point, eltype(self), (ndims(self),))
-_grad(self::CoordsEvaluable) = Funcall(_Array, :getfield, self, :grad, eltype(self), (ndims(self),ndims(self)))
-
-local_coords(n) = argument(_Coords, :coords, Float64, (n,))
-local_point(n) = _point(local_coords(n))
-local_grad(n) = _grad(local_coords(n))
+local_coords(n) = EvalArg{_Coords}(:coords; eltype=Float64, ndims=n)
+local_point(n) = ExtractCoords(local_coords(n))
+local_grad(n) = ExtractCoords(local_coords(n), 1)
 
 global_coords(n) = ApplyTrans(global_transform(), local_coords(n))
-global_point(n) = _point(global_coords(n))
-global_grad(n) = _grad(global_coords(n))
+global_point(n) = ExtractCoords(global_coords(n))
+global_grad(n) = ExtractCoords(global_coords(n), 1)
 
 function normal(geom)
     @assert ndims(geom) == 1

@@ -2,69 +2,76 @@
 # collecting evaluation arguments, element data, etc.
 
 
-"""
-    EvalArgs()
-
-A special Evaluable that just returns the evaluation arguments in raw
-form. This is typically the only evaluable that receives undeclared
-arguments.
-"""
-struct EvalArgs <: Evaluable{_Any} end
-codegen(::EvalArgs) = CplEvalArgs()
-
-
-"""
-    Funcall
-
-A special Evaluable that represents a function call of the form
-
-    functionname(argument, parameter)
-
-Here, the function name is a symbol, the argument is another Evaluable
-and the parameter is any object of bits type.
-
-A funcall may represent any return type. Use one of the constructors:
-
-    Funcall(_Array, functionname, argument, parameter, eltype, size)
-    Funcall(_Coords, functionname, argument, parameter, eltype, (ndims,))
-    Funcall(_Element, functionname, argument, parameter)
-    Funcall(_Transform, functionname, argument, parameter)
-
-E.g. for field access or element data use
-
-    Funcall(..., :getfield, argument, :fieldname, ...)
-    Funcall(..., :elementdata, argument, :dataname, ...)
-"""
-struct Funcall{T} <: Evaluable{T}
-    funcname :: Symbol
-    argument :: Evaluable
-    parameter
-
-    # This is a hack so that one struct can represent many different output types
+# Helper struct for allowing some evaluables to respond to different interfaces
+# without multiple subtypes
+struct Mimic
     eltype :: Union{Nothing, DataType}
     size :: Union{Nothing, Dims}
     ndims :: Union{Nothing, Int}
 
-    function Funcall{T}(func, arg, param; size=nothing, eltype=nothing, ndims=nothing) where T
+    function Mimic(T; size=nothing, eltype=nothing, ndims=nothing)
         T <: _Coords && @assert ndims isa Int
         T <: _Array && @assert size isa Dims
         T <: Union{_Coords,_Array} && @assert eltype isa DataType
-        @assert isbits(param) || param isa Symbol
-        new{T}(func, arg, param, eltype, size, ndims)
+        new(eltype, size, ndims)
     end
 end
 
-# There are special outer constructors for each result type
-Funcall(::Type{_Coords}, func, arg, param, eltype, (n,)) = Funcall{_Coords}(func, arg, param; eltype=eltype, ndims=n)
-Funcall(::Type{_Array}, func, arg, param, eltype, size) = Funcall{_Array}(func, arg, param; eltype=eltype, size=size)
-Funcall(T::Type{<:Result}, func, arg, param) = Funcall{T}(func, arg, param)
+# Helper supertype for Mimics. Subtypes should have a field called
+# mimic of type Mimic.
+abstract type ShapeShifter{T} <: Evaluable{T} end
 
-arguments(self::Funcall) = Evaluable[self.argument]
-Base.size(self::Funcall{_Array}) = self.size
-Base.ndims(self::Funcall{_Coords}) = self.ndims
-Base.eltype(self::Funcall{<:Union{_Array,_Coords}}) = self.eltype
+Base.size(self::ShapeShifter{_Array}) = self.mimic.size
+Base.ndims(self::ShapeShifter{_Coords}) = self.mimic.ndims
+Base.eltype(self::ShapeShifter{<:Union{_Array,_Coords}}) = self.mimic.eltype
 
-codegen(self::Funcall) = CplFuncall{self.funcname, self.parameter}()
+
+"""
+    EvalArg{T}(name; kwargs...)
+
+Returns the evaluation argument named `name`.
+"""
+struct EvalArg{T} <: ShapeShifter{T}
+    name :: Symbol
+    mimic :: Mimic
+    EvalArg{T}(name; kwargs...) where T = new{T}(name, Mimic(T; kwargs...))
+end
+
+codegen(self::EvalArg) = CplEvalArg{self.name}()
+
+
+"""
+    ElementData{T}(name; kwargs...)
+
+Returns the element data named `name`.
+"""
+struct ElementData{T} <: ShapeShifter{T}
+    name :: Symbol
+    mimic :: Mimic
+    ElementData{T}(name; kwargs...) where T = new{T}(name, Mimic(T; kwargs...))
+end
+
+arguments(self::ElementData) = Evaluable[EvalArg{_Element}(:element)]
+codegen(self::ElementData) = CplElementData{self.name}()
+
+
+"""
+    ExtractCoords(coords[, stage])
+
+Extract the derivative at level `stage` from `coords`. Here, stage
+zero corresponds to the point, stage one corresponds to the
+derivative, etc.
+"""
+struct ExtractCoords <: ArrayEvaluable
+    arg :: CoordsEvaluable
+    stage :: Int
+end
+
+ExtractCoords(arg::CoordsEvaluable) = ExtractCoords(arg, 0)
+
+arguments(self::ExtractCoords) = Evaluable[self.arg]
+Base.size(self::ExtractCoords) = ntuple(_->ndims(self.arg), self.stage+1)
+codegen(self::ExtractCoords) = CplGetIndex{self.stage+1}()
 
 
 """
