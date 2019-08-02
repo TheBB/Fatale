@@ -190,6 +190,7 @@ struct EvaluationSequence{I,K}
     end
 end
 
+Base.length(self::Type{<:EvaluationSequence{I}}) where I = length(I)
 Base.length(self::EvaluationSequence{I}) where I = length(I)
 
 
@@ -203,28 +204,29 @@ result of the full evaluation sequence if not given.
 @generated function (self::EvaluationSequence{I,K})(::Val{N}, evalargs::NamedTuple) where {N,I,K}
     # Find which functions we need, generate symbol arrays
     seq = _sequence(I, N)
-    syms = [gensym() for _ in seq]
-    argsyms = [[syms[dep] for dep in I[tgt]] for tgt in seq]
+    syms = [gensym() for _ in 1:length(self)]
 
-    codes = Expr[]
-    for (i, functype, sym, args) in zip(seq, K.parameters[seq], syms, argsyms)
-        if functype <: RawCplBlock
-            code = :(self.funcs[$i](evalargs, $(args...)))
+    argexprs = map(enumerate(seq)) do (i, tgt)
+        if K.parameters[tgt] <: RawCplBlock
+            return [:evalargs, (:(TargetedEvaluationSequence(self, Val($i))) for i in I[tgt])...]
         else
-            code = :(self.funcs[$i]($(args...)))
+            return [syms[dep] for dep in I[tgt]]
         end
-        push!(codes, :($sym = $code))
+    end
+
+    codes = map(zip(seq, syms[seq], argexprs)) do (i, sym, args)
+        :($sym = self.funcs[$i]($(args...)))
     end
 
     quote
         $(codes...)
-        $(syms[end])
+        $(syms[N])
     end
 end
 
-@generated (self::EvaluationSequence{I})(evalargs::NamedTuple) where I = quote
+@generated (self::EvaluationSequence)(evalargs::NamedTuple) = quote
     @_inline_meta
-    self(Val($(length(I))), evalargs)
+    self(Val($(length(self))), evalargs)
 end
 
 function _sequence(I, N)
@@ -247,10 +249,11 @@ struct TargetedEvaluationSequence{S<:EvaluationSequence, I<:Val}
     target :: I
 end
 
-function TargetedEvaluationSequence(func::Evaluable)
-    sequence = EvaluationSequence(func)
-    TargetedEvaluationSequence(sequence, Val(length(sequence)))
-end
+TargetedEvaluationSequence(seq::EvaluationSequence) =
+    TargetedEvaluationSequence(seq, Val(length(seq)))
+
+TargetedEvaluationSequence(func::Evaluable) =
+    TargetedEvaluationSequence(EvaluationSequence(func))
 
 @inline (self::TargetedEvaluationSequence)(evalargs::NamedTuple) = self.sequence(self.target, evalargs)
 
