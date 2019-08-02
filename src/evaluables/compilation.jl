@@ -179,10 +179,10 @@ end
 
 # I: Tuple of integer tuples, I[k] are all functions indices whose
 # outputs form the inputs of the function at index k.
-struct EvaluationSequence{I,K}
+struct EvalSeq{I,K}
     funcs :: K
 
-    function EvaluationSequence(func::Evaluable)
+    function EvalSeq(func::Evaluable)
         sequence = linearize(func)
         callables = Tuple(codegen(stage.func) for stage in sequence)
         inds = Tuple(Tuple(stage.arginds) for stage in sequence)
@@ -190,25 +190,24 @@ struct EvaluationSequence{I,K}
     end
 end
 
-Base.length(self::Type{<:EvaluationSequence{I}}) where I = length(I)
-Base.length(self::EvaluationSequence{I}) where I = length(I)
+Base.length(self::Type{<:EvalSeq{I}}) where I = length(I)
+Base.length(self::EvalSeq{I}) where I = length(I)
 
 
 """
-    (::EvaluationSequence)([index::Val{k},] evalargs::NamedTuple)
+    (::EvalSeq)([index::Val{k},] evalargs::NamedTuple)
 
 Evaluate an evaluation sequence at some collection of
 arguments. Returns the result of the function at index *k*, or the
 result of the full evaluation sequence if not given.
 """
-@generated function (self::EvaluationSequence{I,K})(::Val{N}, evalargs::NamedTuple) where {N,I,K}
-    # Find which functions we need, generate symbol arrays
+@generated function (self::EvalSeq{I,K})(::Val{N}, evalargs::NamedTuple) where {N,I,K}
     seq = _sequence(I, N)
     syms = [gensym() for _ in 1:length(self)]
 
     argexprs = map(enumerate(seq)) do (i, tgt)
         if K.parameters[tgt] <: RawCplBlock
-            return [:evalargs, (:(TargetedEvaluationSequence(self, Val($i))) for i in I[tgt])...]
+            return [:evalargs, (:(TargetedEvalSeq(self, Val($i))) for i in I[tgt])...]
         else
             return [syms[dep] for dep in I[tgt]]
         end
@@ -224,7 +223,7 @@ result of the full evaluation sequence if not given.
     end
 end
 
-@generated (self::EvaluationSequence)(evalargs::NamedTuple) = quote
+@generated (self::EvalSeq)(evalargs::NamedTuple) = quote
     @_inline_meta
     self(Val($(length(self))), evalargs)
 end
@@ -244,20 +243,17 @@ end
 
 
 # Helper struct for bundling together an evaluation sequence and a target function index
-struct TargetedEvaluationSequence{S<:EvaluationSequence, I<:Val}
+struct TargetedEvalSeq{S<:EvalSeq, I<:Val}
     sequence :: S
     target :: I
 end
 
-TargetedEvaluationSequence(seq::EvaluationSequence) =
-    TargetedEvaluationSequence(seq, Val(length(seq)))
+TargetedEvalSeq(seq::EvalSeq) = TargetedEvalSeq(seq, Val(length(seq)))
+TargetedEvalSeq(func::Evaluable) = TargetedEvalSeq(EvalSeq(func))
 
-TargetedEvaluationSequence(func::Evaluable) =
-    TargetedEvaluationSequence(EvaluationSequence(func))
+@inline (self::TargetedEvalSeq)(evalargs::NamedTuple) = self.sequence(self.target, evalargs)
 
-@inline (self::TargetedEvaluationSequence)(evalargs::NamedTuple) = self.sequence(self.target, evalargs)
-
-pass_evalargs(::Type{TargetedEvaluationSequence}) = true
+pass_evalargs(::Type{TargetedEvalSeq}) = true
 
 
 # ==============================================================================
@@ -286,11 +282,11 @@ optimize(self::AbstractOptimizedEvaluable) = self
 
 The most fundamental form of optimized evaluable.
 """
-struct OptimizedEvaluable{T,N,S,F<:TargetedEvaluationSequence} <: AbstractOptimizedEvaluable{T,N,S}
+struct OptimizedEvaluable{T,N,S,F<:TargetedEvalSeq} <: AbstractOptimizedEvaluable{T,N,S}
     sequence :: F
 
     function OptimizedEvaluable(func::ArrayEvaluable)
-        seq = TargetedEvaluationSequence(func)
+        seq = TargetedEvalSeq(func)
         new{eltype(func), ndims(func), size(func), typeof(seq)}(seq)
     end
 end
