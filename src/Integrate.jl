@@ -8,6 +8,7 @@ import ..Elements: elementdata
 
 import Strided: UnsafeStridedView, sreshape, StridedView
 import SparseArrays: sparse!, dropzeros!, nnz
+import StaticArrays: SVector
 
 export integrate, to
 
@@ -36,45 +37,58 @@ function _sparse!(I, J, V, m, n)
 end
 
 
-integrate(func::ArrayEvaluable, domain, quadrule) = integrate(optimize(func), domain, quadrule)
+const QuadRule = Tuple{AbstractArray{<:SVector}, AbstractArray{Float64}}
 
 
-function integrate(func::OptimizedEvaluable, domain, quadrule)
+integrate(func, domain, quadrule::QuadRule) = integrate(func, domain, (quadrule=quadrule,))
+integrate(func::ArrayEvaluable, domain, args::NamedTuple) = integrate(optimize(func), domain, args)
+
+
+# ==============================================================================
+# Integration of dense evaluables
+
+function integrate(func::OptimizedEvaluable, domain, args::NamedTuple)
     data = zeros(eltype(func), size(func))
-    (pts, wts) = quadrule
+    (pts, wts) = args.quadrule
     for element in domain
         loctrans = elementdata(element, Val(:loctrans))
         for (pt, wt) in zip(pts, wts)
             coords = apply(loctrans, (point=pt, grad=nothing))
-            data .+= func((element=element, coords=coords, quadrule=quadrule)) .* wt
+            data .+= func((element=element, coords=coords, args...)) .* wt
         end
     end
     data
 end
 
 
-function integrate(func::OptimizedSparseEvaluable{T,1}, domain, quadrule) where T
+# ==============================================================================
+# Integration of sparse vector evaluables
+
+function integrate(func::OptimizedSparseEvaluable{T,1}, domain, args::NamedTuple) where T
     V = zeros(T, length(func))
     for block in func.blocks
-        _integrate(block, domain, quadrule, UnsafeStridedView(V))
+        _integrate(block, domain, args, UnsafeStridedView(V))
     end
     V
 end
 
-function _integrate(block::OptimizedBlockEvaluable{1}, domain, quadrule, V)
-    (pts, wts) = quadrule
+function _integrate(block::OptimizedBlockEvaluable{1}, domain, args, V)
+    (pts, wts) = args.quadrule
     for (i, element) in enumerate(domain)
         I = block.indices[1](element, nothing)
         loctrans = elementdata(element, Val(:loctrans))
         for (pt, wt) in zip(pts, wts)
             coords = apply(loctrans, (point=pt, grad=nothing))
-            V[I] .+= block.data((element=element, coords=coords, quadrule=quadrule)) .* wt
+            V[I] .+= block.data((element=element, coords=coords, args...)) .* wt
         end
     end
 end
 
 
-function integrate(func::OptimizedSparseEvaluable{T,2}, domain, quadrule) where T
+# ==============================================================================
+# Integration of sparse matrix evaluables
+
+function integrate(func::OptimizedSparseEvaluable{T,2}, domain, args::NamedTuple) where T
     nelems = length(domain)
     nentries = nnz(func)
 
@@ -89,22 +103,22 @@ function integrate(func::OptimizedSparseEvaluable{T,2}, domain, quadrule) where 
         It = sreshape(UnsafeStridedView(I)[i:l], (m, n, nelems))
         Jt = permutedims(sreshape(UnsafeStridedView(J)[i:l], (m, n, nelems)), (2, 1, 3))
         Vt = sreshape(UnsafeStridedView(V)[i:l], (m, n, nelems))
-        _integrate(block, domain, quadrule, It, Jt, Vt)
+        _integrate(block, domain, args, It, Jt, Vt)
         i += l
     end
 
     _sparse!(I, J, V, size(func)...)
 end
 
-function _integrate(block::OptimizedBlockEvaluable{2}, domain, quadrule, I, J, V)
-    (pts, wts) = quadrule
+function _integrate(block::OptimizedBlockEvaluable{2}, domain, args, I, J, V)
+    (pts, wts) = args.quadrule
     for (i, element) in enumerate(domain)
         I[:,:,i] .= block.indices[1](element, nothing)
         J[:,:,i] .= block.indices[2](element, nothing)
         loctrans = elementdata(element, Val(:loctrans))
         for (pt, wt) in zip(pts, wts)
             coords = apply(loctrans, (point=pt, grad=nothing))
-            V[:,:,i] .+= block.data((element=element, coords=coords, quadrule=quadrule)) .* wt
+            V[:,:,i] .+= block.data((element=element, coords=coords, args...)) .* wt
         end
     end
 end
