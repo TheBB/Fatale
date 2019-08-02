@@ -202,7 +202,7 @@ arguments. Returns the result of the function at index *k*, or the
 result of the full evaluation sequence if not given.
 """
 @generated function (self::EvalSeq{I,K})(::Val{N}, evalargs::NamedTuple) where {N,I,K}
-    seq = _sequence(I, N)
+    seq = _sequence(I, N, K.parameters)
     syms = [gensym() for _ in 1:length(self)]
 
     argexprs = map(enumerate(seq)) do (i, tgt)
@@ -228,16 +228,17 @@ end
     self(Val($(length(self))), evalargs)
 end
 
-function _sequence(I, N)
+function _sequence(I, N, functypes)
     seq = Set{Int}()
-    _sequence!(seq, I, N)
+    _sequence!(seq, I, N, functypes)
     sort(collect(seq))
 end
 
-function _sequence!(ret, I, tgt)
+function _sequence!(ret, I, tgt, functypes)
     push!(ret, tgt)
+    functypes[tgt] <: RawCplBlock && return
     for dep in I[tgt]
-        _sequence!(ret, I, dep)
+        _sequence!(ret, I, dep, functypes)
     end
 end
 
