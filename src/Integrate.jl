@@ -3,6 +3,8 @@ module Integrate
 import ..Evaluables:
     OptimizedEvaluable, OptimizedBlockEvaluable, OptimizedSparseEvaluable,
     ArrayEvaluable, optimize
+import ..Transforms: apply
+import ..Elements: elementdata
 
 import Strided: UnsafeStridedView, sreshape, StridedView
 import SparseArrays: sparse!, dropzeros!, nnz
@@ -41,8 +43,10 @@ function integrate(func::OptimizedEvaluable, domain, quadrule)
     data = zeros(eltype(func), size(func))
     (pts, wts) = quadrule
     for element in domain
+        loctrans = elementdata(element, Val(:loctrans))
         for (pt, wt) in zip(pts, wts)
-            data .+= func(element, pt) .* wt
+            coords = apply(loctrans, (point=pt, grad=nothing))
+            data .+= func((element=element, coords=coords)) .* wt
         end
     end
     data
@@ -61,8 +65,10 @@ function _integrate(block::OptimizedBlockEvaluable{1}, domain, quadrule, V)
     (pts, wts) = quadrule
     for (i, element) in enumerate(domain)
         I = block.indices[1](element, nothing)
+        loctrans = elementdata(element, Val(:loctrans))
         for (pt, wt) in zip(pts, wts)
-            V[I] .+= block.data(element, pt) .* wt
+            coords = apply(loctrans, (point=pt, grad=nothing))
+            V[I] .+= block.data((element=element, coords=coords)) .* wt
         end
     end
 end
@@ -95,8 +101,10 @@ function _integrate(block::OptimizedBlockEvaluable{2}, domain, quadrule, I, J, V
     for (i, element) in enumerate(domain)
         I[:,:,i] .= block.indices[1](element, nothing)
         J[:,:,i] .= block.indices[2](element, nothing)
+        loctrans = elementdata(element, Val(:loctrans))
         for (pt, wt) in zip(pts, wts)
-            V[:,:,i] .+= block.data(element, pt) .* wt
+            coords = apply(loctrans, (point=pt, grad=nothing))
+            V[:,:,i] .+= block.data((element=element, coords=coords)) .* wt
         end
     end
 end
