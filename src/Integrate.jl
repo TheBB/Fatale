@@ -46,7 +46,7 @@ function integrate(func::OptimizedEvaluable, domain, quadrule)
         loctrans = elementdata(element, Val(:loctrans))
         for (pt, wt) in zip(pts, wts)
             coords = apply(loctrans, (point=pt, grad=nothing))
-            data .+= func((element=element, coords=coords)) .* wt
+            data .+= func((element=element, coords=coords, quadrule=quadrule)) .* wt
         end
     end
     data
@@ -68,7 +68,7 @@ function _integrate(block::OptimizedBlockEvaluable{1}, domain, quadrule, V)
         loctrans = elementdata(element, Val(:loctrans))
         for (pt, wt) in zip(pts, wts)
             coords = apply(loctrans, (point=pt, grad=nothing))
-            V[I] .+= block.data((element=element, coords=coords)) .* wt
+            V[I] .+= block.data((element=element, coords=coords, quadrule=quadrule)) .* wt
         end
     end
 end
@@ -104,7 +104,7 @@ function _integrate(block::OptimizedBlockEvaluable{2}, domain, quadrule, I, J, V
         loctrans = elementdata(element, Val(:loctrans))
         for (pt, wt) in zip(pts, wts)
             coords = apply(loctrans, (point=pt, grad=nothing))
-            V[:,:,i] .+= block.data((element=element, coords=coords)) .* wt
+            V[:,:,i] .+= block.data((element=element, coords=coords, quadrule=quadrule)) .* wt
         end
     end
 end
