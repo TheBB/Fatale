@@ -17,7 +17,7 @@ using ..Transforms
 export evalorder
 export optimize, blocks
 export local_point, local_grad, global_point, global_grad, grad, insertaxis, element_index, normal
-export Contract, Constant, Inflate, Monomials, Zeros
+export Contract, Constant, ElementIntegral, Inflate, Monomials, Zeros
 
 
 abstract type Result end

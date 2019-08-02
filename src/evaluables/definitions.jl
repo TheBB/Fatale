@@ -37,6 +37,24 @@ blocks(self::Inflate) = ((
 
 
 """
+    ElementIntegral(arg)
+
+Integrate *arg* over the current element.
+"""
+struct ElementIntegral <: ArrayEvaluable
+    arg :: ArrayEvaluable
+end
+
+arguments(self::ElementIntegral) = Evaluable[self.arg]
+Base.size(self::ElementIntegral) = size(self.arg)
+Base.eltype(self::ElementIntegral) = let t = eltype(self.arg)
+    t <: Integer ? Float64 : t
+end
+
+codegen(self::ElementIntegral) = CplElementIntegral(@MArray zeros(eltype(self), size(self)...))
+
+
+"""
     GetIndex(arg, index...)
 
 An evaluable returning a view into another array.

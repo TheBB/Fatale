@@ -56,6 +56,20 @@ struct CplCommArith{F} end
     $F(args...)
 end
 
+struct CplElementIntegral{T} <: RawCplBlock
+    val :: T
+end
+@inline function (self::CplElementIntegral)(args, sub)
+    self.val .= zero(eltype(self.val))
+    (pts, wts) = args.quadrule
+    loctrans = elementdata(args.element, Val(:loctrans))
+    for (pt, wt) in zip(pts, wts)
+        coords = apply(loctrans, (point=pt, grad=nothing))
+        self.val .+= sub((args..., coords=coords)) .* wt
+    end
+    SArray(self.val)
+end
+
 struct CplMonomials{D,P,T}
     val :: T
     CplMonomials(degree, padding, eltype, size) = let val = @MArray zeros(eltype, size...)
