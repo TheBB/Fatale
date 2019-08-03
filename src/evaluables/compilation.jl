@@ -1,30 +1,29 @@
 # ==============================================================================
 # Compilation blocks
 
-# Supertype of all compilation blocks
-abstract type CplBlock end
+# True if evalargs should be passed
+pass_evalargs(::Type{<:Any}) = false
 
-# Supertype of compilation blocks that are 'raw'.
-# These receive the evaluation args as the first parameter, and the remaining
-# arguments as targeted evaluation sequences.
-abstract type RawCplBlock end
+# Tuple of argument indices that should be passed in raw form
+raw_args(::Type{<:Any}) = ()
 
-struct CplEvalArg{T} <: RawCplBlock end
+struct CplEvalArg{T} end
 @generated (::CplEvalArg{T})(arg) where T = quote
     @_inline_meta
     arg.$T
 end
+pass_evalargs(::Type{<:CplEvalArg}) = true
 
-struct CplElementData{T} <: CplBlock end
+struct CplElementData{T} end
 @generated (::CplElementData{T})(element) where T = quote
     @_inline_meta
     elementdata(element, Val(:($T)))
 end
 
-struct CplApplyTrans <: CplBlock end
+struct CplApplyTrans end
 @inline (::CplApplyTrans)(trans, coords) = apply(trans, coords)
 
-struct CplConstant{T} <: CplBlock
+struct CplConstant{T}
     val :: T
 end
 @inline (self::CplConstant)() = self.val
@@ -61,19 +60,20 @@ struct CplCommArith{F} end
     $F(args...)
 end
 
-struct CplElementIntegral{T} <: RawCplBlock
+struct CplElementIntegral{T}
     val :: T
 end
-@inline function (self::CplElementIntegral)(args, sub)
+@inline function (self::CplElementIntegral)(args, sub, loctrans, quadrule)
     self.val .= zero(eltype(self.val))
-    (pts, wts) = args.quadrule
-    loctrans = elementdata(args.element, Val(:loctrans))
+    (pts, wts) = quadrule
     for (pt, wt) in zip(pts, wts)
         coords = apply(loctrans, (point=pt, grad=nothing))
         self.val .+= sub((args..., coords=coords)) .* wt
     end
     SArray(self.val)
 end
+pass_evalargs(::Type{<:CplElementIntegral}) = true
+raw_args(::Type{<:CplElementIntegral}) = (1,)
 
 struct CplMonomials{D,P,T}
     val :: T
@@ -225,11 +225,18 @@ result of the full evaluation sequence if not given.
     syms = [gensym() for _ in 1:length(self)]
 
     argexprs = map(enumerate(seq)) do (i, tgt)
-        if K.parameters[tgt] <: RawCplBlock
-            return [:evalargs, (:(TargetedEvalSeq(self, Val($i))) for i in I[tgt])...]
-        else
-            return [syms[dep] for dep in I[tgt]]
+        args = Union{Expr,Symbol}[syms[dep] for dep in I[tgt]]
+
+        blocktype = K.parameters[tgt]
+        for idx in raw_args(blocktype)
+            args[idx] = :(TargetedEvalSeq(self, Val($(I[tgt][idx]))))
         end
+
+        if pass_evalargs(blocktype)
+            pushfirst!(args, :evalargs)
+        end
+
+        return args
     end
 
     codes = map(zip(seq, syms[seq], argexprs)) do (i, sym, args)
@@ -255,8 +262,8 @@ end
 
 function _sequence!(ret, I, tgt, functypes)
     push!(ret, tgt)
-    functypes[tgt] <: RawCplBlock && return
-    for dep in I[tgt]
+    for (idx, dep) in enumerate(I[tgt])
+        idx in raw_args(functypes[tgt]) && continue
         _sequence!(ret, I, dep, functypes)
     end
 end

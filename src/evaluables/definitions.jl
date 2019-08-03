@@ -45,7 +45,7 @@ struct ElementIntegral <: ArrayEvaluable
     arg :: ArrayEvaluable
 end
 
-arguments(self::ElementIntegral) = Evaluable[self.arg]
+arguments(self::ElementIntegral) = Evaluable[self.arg, ElementData{_Transform}(:loctrans), EvalArg{_Any}(:quadrule)]
 Base.size(self::ElementIntegral) = size(self.arg)
 Base.eltype(self::ElementIntegral) = let t = eltype(self.arg)
     t <: Integer ? Float64 : t
