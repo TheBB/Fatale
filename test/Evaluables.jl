@@ -117,6 +117,21 @@ end
 end
 
 
+@testset "ElementIntegral" begin
+    func = optimize(ElementIntegral(global_point(2)))
+    quadrule = (
+        [SVector(0.25, 0.25), SVector(0.75, 0.25), SVector(0.25, 0.75), SVector(0.75, 0.75)],
+        [0.25, 0.25, 0.25, 0.25]
+    )
+
+    element = Element(Empty(2))
+    @test func((quadrule=quadrule, element=element)) ≈ [0.5, 0.5]
+
+    element = Element(shift(SVector(2.0, 3.0)))
+    @test func((quadrule=quadrule, element=element)) ≈ [2.5, 3.5]
+end
+
+
 @testset "GetIndex" begin
     Random.seed!(201906221119)
     data = @SArray rand(3,5,7)
