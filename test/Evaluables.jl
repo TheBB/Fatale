@@ -4,15 +4,15 @@
 
     element = Element(shift(@SVector rand(2)))
     quadpt = @SVector rand(2)
-    @test func(element, quadpt) == quadpt
+    @test @inferred(func(element, quadpt)) == quadpt
 
     sub = SubElement(updim(Val(2), 1, 5.0), element)
     quadpt = @SVector rand(1)
-    @test func(sub, quadpt) == [5.0, quadpt[1]]
+    @test @inferred(func(sub, quadpt)) == [5.0, quadpt[1]]
 
     sub = SubElement(updim(Val(2), 2, 5.0), element)
     quadpt = @SVector rand(1)
-    @test func(sub, quadpt) == [quadpt[1], 5.0]
+    @test @inferred(func(sub, quadpt)) == [quadpt[1], 5.0]
 
     @noallocs begin
         func = optimize(local_point(2))
@@ -31,15 +31,15 @@ end
 
     element = Element(shift(offset))
     quadpt = @SVector rand(2)
-    @test func(element, quadpt) ≈ quadpt + offset
+    @test @inferred(func(element, quadpt)) ≈ quadpt + offset
 
     sub = SubElement(updim(Val(2), 1, 4.0), element)
     quadpt = @SVector rand(1)
-    @test func(sub, quadpt) ≈ [4.0, quadpt[1]] + offset
+    @test @inferred(func(sub, quadpt)) ≈ [4.0, quadpt[1]] + offset
 
     sub = SubElement(updim(Val(2), 2, 4.0), element)
     quadpt = @SVector rand(1)
-    @test func(sub, quadpt) ≈ [quadpt[1], 4.0] + offset
+    @test @inferred(func(sub, quadpt)) ≈ [quadpt[1], 4.0] + offset
 
     @noallocs begin
         func = optimize(global_point(2))
@@ -62,7 +62,7 @@ end
     @test size(func) == (2, 2, 3)
     func = optimize(func)
 
-    @test func(nothing, nothing) ≈ .+(arr1, arr2, arr3)
+    @test @inferred(func(nothing, nothing)) ≈ .+(arr1, arr2, arr3)
 
     @noallocs begin
         @bench $func(nothing, nothing)
@@ -79,23 +79,23 @@ end
         [DummyConstant(mx1), DummyConstant(mx2)],
         [[1,2], [2,3]], [1,3]
     ))
-    @test func(nothing, nothing) ≈ mx1 * mx2
+    @test @inferred(func(nothing, nothing)) ≈ mx1 * mx2
 
     func = optimize(DummyConstant(mx1) * DummyConstant(mx2))
-    @test func(nothing, nothing) ≈ mx1 * mx2
+    @test @inferred(func(nothing, nothing)) ≈ mx1 * mx2
 
     mx3 = @SMatrix rand(2,8)
     func = optimize(Contract(
         [DummyConstant(mx1), DummyConstant(mx2), DummyConstant(mx3)],
         [[1,2], [2,3], [3,4]], [1,4]
     ))
-    @test func(nothing, nothing) ≈ mx1 * mx2 * mx3
+    @test @inferred(func(nothing, nothing)) ≈ mx1 * mx2 * mx3
 
     func = optimize(Contract(
         [DummyConstant(mx1), DummyConstant(mx2), DummyConstant(mx3')],
         [[10,30], [30,90], [71,10]], [71,90]
     ))
-    @test func(nothing, nothing) ≈ mx3' * mx1 * mx2
+    @test @inferred(func(nothing, nothing)) ≈ mx3' * mx1 * mx2
 
     @noallocs begin
         @bench $func(nothing, nothing)
@@ -107,7 +107,7 @@ end
     Random.seed!(201906141547)
     data = @SArray rand(3,4,5)
     func = optimize(Constant(data))
-    @test func(nothing, nothing) == data
+    @test @inferred(func(nothing, nothing)) == data
 
     @noallocs begin
         data = @SArray rand(3,4,5)
@@ -125,10 +125,10 @@ end
     )
 
     element = Element(Empty(2))
-    @test func((quadrule=quadrule, element=element)) ≈ [0.5, 0.5]
+    @test @inferred(func((quadrule=quadrule, element=element))) ≈ [0.5, 0.5]
 
     element = Element(shift(SVector(2.0, 3.0)))
-    @test func((quadrule=quadrule, element=element)) ≈ [2.5, 3.5]
+    @test @inferred(func((quadrule=quadrule, element=element))) ≈ [2.5, 3.5]
 end
 
 
@@ -139,7 +139,7 @@ end
     ufunc = DummyConstant(data)[1, :, :]
     @test size(ufunc) == (5, 7)
     func = optimize(ufunc)
-    res = func(nothing, nothing)
+    res = @inferred(func(nothing, nothing))
     @test res == data[1, :, :]
 
     @noallocs begin
@@ -149,7 +149,7 @@ end
     ufunc = DummyConstant(data)[3, :, 4]
     @test size(ufunc) == (5,)
     func = optimize(ufunc)
-    res = func(nothing, nothing)
+    res = @inferred(func(nothing, nothing))
     @test res == data[3, :, 4]
 
     @noallocs begin
@@ -159,7 +159,7 @@ end
     ufunc = DummyConstant(data)[:, 2, :]
     @test size(ufunc) == (3, 7)
     func = optimize(ufunc)
-    res = func(nothing, nothing)
+    res = @inferred(func(nothing, nothing))
     @test res == data[:, 2, :]
 
     @noallocs begin
@@ -169,7 +169,7 @@ end
     ufunc = DummyConstant(data)[1:end-1, 3, :]
     @test size(ufunc) == (2, 7)
     func = optimize(ufunc)
-    res = func(nothing, nothing)
+    res = @inferred(func(nothing, nothing))
     @test res == data[1:end-1, 3, :]
 
     @noallocs begin
@@ -183,15 +183,15 @@ end
 
     data = @SArray rand(1,1)
     func = optimize(inv(DummyConstant(data)))
-    @test func(nothing, nothing) ≈ inv(data)
+    @test @inferred(func(nothing, nothing)) ≈ inv(data)
 
     data = @SArray rand(2,2)
     func = optimize(inv(DummyConstant(data)))
-    @test func(nothing, nothing) ≈ inv(data)
+    @test @inferred(func(nothing, nothing)) ≈ inv(data)
 
     data = @SArray rand(3,3)
     func = optimize(inv(DummyConstant(data)))
-    @test func(nothing, nothing) ≈ inv(data)
+    @test @inferred(func(nothing, nothing)) ≈ inv(data)
 
     @noallocs begin
         data = @SArray rand(3,3)
@@ -207,10 +207,10 @@ end
     quadpt = @SVector [1.0, 2.0, 3.0]
 
     func = optimize(Monomials(local_point(3), 4))
-    @test func(element, quadpt) ≈ [1 1 1 1 1; 1 2 4 8 16; 1 3 9 27 81]
+    @test @inferred(func(element, quadpt)) ≈ [1 1 1 1 1; 1 2 4 8 16; 1 3 9 27 81]
 
     func = optimize(Monomials(local_point(3), 4, 2))
-    @test func(element, quadpt) ≈ [0 0 1 1 1 1 1; 0 0 1 2 4 8 16; 0 0 1 3 9 27 81]
+    @test @inferred(func(element, quadpt)) ≈ [0 0 1 1 1 1 1; 0 0 1 2 4 8 16; 0 0 1 3 9 27 81]
 
     @noallocs begin
         func = optimize(Monomials(local_point(3), 4))
@@ -232,7 +232,7 @@ end
     @test size(func) == (2, 2, 3)
     func = optimize(func)
 
-    @test func(nothing, nothing) ≈ .*(arr1, arr2, arr3)
+    @test @inferred(func(nothing, nothing)) ≈ .*(arr1, arr2, arr3)
 
     @noallocs begin
         @bench $func(nothing, nothing)
@@ -244,7 +244,7 @@ end
     Random.seed!(201906192304)
     data = @SArray rand(5,2)
     func = optimize(-DummyConstant(data))
-    @test func(nothing, nothing) == -data
+    @test @inferred(func(nothing, nothing)) == -data
 
     @noallocs begin
         @bench $func(nothing, nothing)
@@ -254,7 +254,7 @@ end
 
 @testset "OneTo" begin
     func = optimize(Evaluables.OneTo(9))
-    @test func(nothing, nothing) == SOneTo(9)
+    @test @inferred(func(nothing, nothing)) == SOneTo(9)
 
     @noallocs begin
         @bench $func(nothing, nothing)
@@ -268,7 +268,7 @@ end
 
     func = optimize(permutedims(DummyConstant(data), (2, 1, 3)))
     @test size(func) == (5, 3, 7)
-    @test func(nothing, nothing) == permutedims(data, (2, 1, 3))
+    @test @inferred(func(nothing, nothing)) == permutedims(data, (2, 1, 3))
 
     @noallocs begin
         @bench $func(nothing, nothing)
@@ -281,7 +281,7 @@ end
     data = @SArray rand(3,5,7)
 
     func = optimize(DummyConstant(data) .^ 3.1)
-    @test func(nothing, nothing) ≈ data .^ 3.1
+    @test @inferred(func(nothing, nothing)) ≈ data .^ 3.1
 
     @noallocs begin
         @bench $func(nothing, nothing)
@@ -294,7 +294,7 @@ end
     data = @SArray rand(3,5,7)
 
     func = optimize(Evaluables.Reciprocal(DummyConstant(data)))
-    @test func(nothing, nothing) ≈ 1 ./ data
+    @test @inferred(func(nothing, nothing)) ≈ 1 ./ data
 
     @noallocs begin
         @bench $func(nothing, nothing)
@@ -307,13 +307,13 @@ end
     arr = @SArray rand(5, 3, 7)
 
     func = optimize(reshape(DummyConstant(arr), 3, 7, 5))
-    @test func(nothing, nothing) == reshape(arr, 3, 7, 5)
+    @test @inferred(func(nothing, nothing)) == reshape(arr, 3, 7, 5)
 
     func = optimize(reshape(DummyConstant(arr), 15, 7))
-    @test func(nothing, nothing) == reshape(arr, 15, 7)
+    @test @inferred(func(nothing, nothing)) == reshape(arr, 15, 7)
 
     func = optimize(reshape(DummyConstant(arr), 3, :))
-    @test func(nothing, nothing) == reshape(arr, 3, 35)
+    @test @inferred(func(nothing, nothing)) == reshape(arr, 3, 35)
 
     @noallocs begin
         func = optimize(reshape(DummyConstant(arr), 3, 7, 5))
@@ -327,7 +327,7 @@ end
     data = @SArray rand(3,5,7)
 
     func = optimize(Evaluables.Sqrt(DummyConstant(data)))
-    @test func(nothing, nothing) ≈ sqrt.(data)
+    @test @inferred(func(nothing, nothing)) ≈ sqrt.(data)
 
     @noallocs begin
         @bench $func(nothing, nothing)
@@ -340,35 +340,35 @@ end
     arr = @SArray rand(2,2,2)
 
     func = optimize(sum(DummyConstant(arr); dims=(1,)))
-    @test func(nothing, nothing) ≈ sum(arr; dims=1)
+    @test @inferred(func(nothing, nothing)) ≈ sum(arr; dims=1)
 
     @noallocs begin
         @bench $func(nothing, nothing)
     end
 
     func = optimize(sum(DummyConstant(arr); dims=(1,2)))
-    @test func(nothing, nothing) ≈ sum(Array(arr); dims=(1,2))
+    @test @inferred(func(nothing, nothing)) ≈ sum(Array(arr); dims=(1,2))
 
     @noallocs begin
         @bench $func(nothing, nothing)
     end
 
     func = optimize(sum(DummyConstant(arr); dims=(1,2), collapse=true))
-    @test func(nothing, nothing) ≈ dropdims(sum(Array(arr); dims=(1,2)); dims=(1,2))
+    @test @inferred(func(nothing, nothing)) ≈ dropdims(sum(Array(arr); dims=(1,2)); dims=(1,2))
 
     @noallocs begin
         @bench $func(nothing, nothing)
     end
 
     func = optimize(sum(DummyConstant(arr); collapse=true))
-    @test func(nothing, nothing) ≈ Scalar(sum(arr))
+    @test @inferred(func(nothing, nothing)) ≈ Scalar(sum(arr))
 end
 
 
 @testset "Zeros" begin
     Random.seed!(201906191751)
     func = optimize(Zeros(Float64, 3, 5, 7))
-    @test func(nothing, nothing) == zeros(Float64, 3, 5, 7)
+    @test @inferred(func(nothing, nothing)) == zeros(Float64, 3, 5, 7)
 
     @noallocs begin
         @bench $func(nothing, nothing)
