@@ -34,8 +34,8 @@ Base.size(self::Contract) = _contract_size(self.args, self.indices, self.target)
 function codegen(self::Contract)
     inds = Tuple(map(Tuple, self.indices))
     target = Tuple(self.target)
-    storage = @MArray zeros(eltype(self), size(self)...)
-    CplContract{inds, target}(storage)
+    outtype = SArray{Tuple{size(self)...}, eltype(self), ndims(self), length(self)}
+    CplContract{inds, target, outtype}()
 end
 
 
@@ -43,8 +43,8 @@ end
 function _do_contract(left, right, l, r, t)
     newsize = _contract_size((left, right), (l, r), t)
     newtype = promote_type(eltype(left), eltype(right))
-    ret = @MArray zeros(newtype, newsize...)
-    func = CplContract{(Tuple(l), Tuple(r)), Tuple(t)}(ret)
+    rtype = SArray{Tuple{newsize...}, newtype, length(newsize), prod(newsize)}
+    func = CplContract{(Tuple(l), Tuple(r)), Tuple(t), rtype}()
     func(left, right)
 end
 

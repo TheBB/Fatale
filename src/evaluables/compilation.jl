@@ -132,32 +132,28 @@ struct CplSum{D,S} end
     :(@inbounds SArray{Tuple{$(S...)}}($(sums...)))
 end
 
-struct CplContract{I,Ti,T}
-    val :: T
-    CplContract{I,Ti}(val::T) where {I,Ti,T} = new{I,Ti,T}(val)
-end
+struct CplContract{I,Ti,T} end
 @generated function (self::CplContract{I,Ti,T})(args...) where {I,Ti,T}
     dims = _sizedict(args, I)
+
+    # dim_order maps an axis label to an arbitrary one-based index
     dim_order = Dict(axis => num for (num, axis) in enumerate(keys(dims)))
 
-    all_indices = product((1:n for n in values(dims))...)
-    codes = map(all_indices) do indices
-        inputs = [
-            :(args[$i][$((indices[dim_order[ax]] for ax in ind)...)])
-            for (i, ind) in enumerate(I)
-        ]
-        product = :(*($(inputs...)))
-        target = :(self.val[$((indices[dim_order[ax]] for ax in Ti)...)])
-        return :($target += $product)
+    # getind(indmap, i) unpacks the indices in i corresponding to the index labels in indmap
+    getind = (indmap, i) -> (i[dim_order[ax]] for ax in indmap)
+
+    sums = Vector{Expr}(undef, length(T))
+    for indices in product((1:n for n in values(dims))...)
+        in_factors = map(enumerate(I)) do (i, ind)
+            index = LinearIndices(size(args[i]))[getind(ind, indices)...]
+            return :(args[$i][$index])
+        end
+        in_prod = :(*($(in_factors...)))
+        out_index = LinearIndices(size(T))[getind(Ti, indices)...]
+        sums[out_index] = isassigned(sums, out_index) ? :($(sums[out_index]) + $in_prod) : in_prod
     end
 
-    quote
-        @inbounds begin
-            self.val .= $(zero(eltype(T)))
-            $(codes...)
-        end
-        SArray(self.val)
-    end
+    :(@inbounds $T($(sums...)))
 end
 
 
