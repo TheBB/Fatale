@@ -32,6 +32,11 @@ Base.convert(::Type{Evaluable}, x) = asevaluable(x, nothing)
 Base.convert(::Type{Evaluable}, x::Evaluable) = x
 Base.convert(::Type{Evaluable}, ::Colon) = error("length must be specified to transform Colon to Evaluable")
 
+staticarray(cons, size, eltype) = cons{Tuple{size...}, eltype, length(size), prod(size)}
+staticarray(cons, x) = staticarray(cons, size(x), eltype(x))
+sarray(args...) = staticarray(SArray, args...)
+marray(args...) = staticarray(MArray, args...)
+
 
 # ==============================================================================
 # Broadcasting
@@ -178,7 +183,7 @@ end
 # Outer constructors
 
 Constant(value::Real) = Constant(Scalar(value))
-Constant(value::AbstractArray) = Constant(SArray{Tuple{size(value)...}, eltype(value)}(value))
+Constant(value::AbstractArray) = Constant(sarray(value)(value))
 
 Inv(self::Constant) = Constant(inv(self.value))
 

@@ -226,10 +226,7 @@ result of the full evaluation sequence if not given.
             args[idx] = :(TargetedEvalSeq(self, Val($(I[tgt][idx]))))
         end
 
-        if pass_evalargs(blocktype)
-            pushfirst!(args, :evalargs)
-        end
-
+        pass_evalargs(blocktype) && pushfirst!(args, :evalargs)
         return args
     end
 

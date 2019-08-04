@@ -34,8 +34,7 @@ Base.size(self::Contract) = _contract_size(self.args, self.indices, self.target)
 function codegen(self::Contract)
     inds = Tuple(map(Tuple, self.indices))
     target = Tuple(self.target)
-    outtype = SArray{Tuple{size(self)...}, eltype(self), ndims(self), length(self)}
-    CplContract{inds, target, outtype}()
+    CplContract{inds, target, sarray(self)}()
 end
 
 
@@ -43,8 +42,7 @@ end
 function _do_contract(left, right, l, r, t)
     newsize = _contract_size((left, right), (l, r), t)
     newtype = promote_type(eltype(left), eltype(right))
-    rtype = SArray{Tuple{newsize...}, newtype, length(newsize), prod(newsize)}
-    func = CplContract{(Tuple(l), Tuple(r)), Tuple(t), rtype}()
+    func = CplContract{(Tuple(l), Tuple(r)), Tuple(t), marray(newsize, newtype)}()
     func(left, right)
 end
 
@@ -75,7 +73,10 @@ function _collapse_constants!(contract, j)
     mask = setdiff(1:length(contract.args), (1,j))
     other_inds = Set(flatten(contract.indices[mask])) ∪ Set(contract.target)
     newtarget = [k for k in (contract.indices[1]..., contract.indices[j]...) if k in other_inds]
-    newarg = convert(Evaluable, _do_contract(valueof(contract.args[1]), valueof(contract.args[j]), contract.indices[1], contract.indices[j], newtarget))
+    newarg = convert(Evaluable, _do_contract(
+        valueof(contract.args[1]), valueof(contract.args[j]),
+        contract.indices[1], contract.indices[j], newtarget
+    ))
 
     contract.args[1] = newarg
     contract.indices[1] = newtarget

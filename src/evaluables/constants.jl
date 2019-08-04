@@ -56,4 +56,4 @@ end
 Zeros(dims::Int...) = Zeros(Float64, dims...)
 Base.eltype(self::Zeros) = self.eltype
 Base.size(self::Zeros) = self.dims
-valueof(self::Zeros) = @SArray zeros(eltype(self), size(self)...)
+valueof(self::Zeros) = zero(sarray(self))
