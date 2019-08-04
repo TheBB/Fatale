@@ -118,17 +118,15 @@ struct CplSum{D,S} end
     tempsize = Tuple(i in D ? 1 : k for (i, k) in enumerate(size(arg)))
     indexer = LinearIndices(size(arg))
 
-    # We'd like to just call the StaticArrays implementation, but it
-    # can cause allocations
-    sums = Expr[]
-    for i in Base.product((1:k for k in tempsize)...)
-        ix = collect(i)
-        exprs = Expr[]
-        for px in Base.product((1:size(arg, d) for d in D)...)
-            ix[D] = collect(px)
-            push!(exprs, :(arg[$(indexer[ix...])]))
+    out_indices = product((1:k for k in tempsize)...)
+    sums = map(out_indices) do out_ind
+        in_ind = collect(out_ind)
+        sum_indices = product((1:size(arg, d) for d in D)...)
+        exprs = map(sum_indices) do sum_ind
+            in_ind[D] = collect(sum_ind)
+            return :(arg[$(indexer[in_ind...])])
         end
-        push!(sums, :(+($(exprs...))))
+        return :(+($(exprs...)))
     end
 
     :(@inbounds SArray{Tuple{$(S...)}}($(sums...)))
@@ -142,15 +140,15 @@ end
     dims = _sizedict(args, I)
     dim_order = Dict(axis => num for (num, axis) in enumerate(keys(dims)))
 
-    codes = Expr[]
-    for indices in product((1:n for n in values(dims))...)
+    all_indices = product((1:n for n in values(dims))...)
+    codes = map(all_indices) do indices
         inputs = [
             :(args[$i][$((indices[dim_order[ax]] for ax in ind)...)])
             for (i, ind) in enumerate(I)
         ]
         product = :(*($(inputs...)))
         target = :(self.val[$((indices[dim_order[ax]] for ax in Ti)...)])
-        push!(codes, :($target += $product))
+        return :($target += $product)
     end
 
     quote
