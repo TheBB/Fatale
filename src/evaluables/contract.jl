@@ -15,7 +15,7 @@ struct Contract <: ArrayEvaluable
     indices :: Vector{Vector{Int}}
     target :: Vector{Int}
 
-    function Contract(args, indices, target)
+    function Contract(args::Vector{<:Evaluable}, indices::Vector{Vector{Int}}, target::Vector{Int})
         @assert length(args) == length(indices)
         @assert all(ndims(arg) == length(ind) for (arg, ind) in zip(args, indices))
 
@@ -40,10 +40,16 @@ end
 
 # Apply a contraction at 'compile time'
 function _do_contract(left, right, l, r, t)
-    newsize = _contract_size((left, right), (l, r), t)
+    newsize = _contract_size([left, right], [l, r], t)
     newtype = promote_type(eltype(left), eltype(right))
-    func = CplContract{(Tuple(l), Tuple(r)), Tuple(t), marray(newsize, newtype)}()
+    func = CplContract{(Tuple(l), Tuple(r)), Tuple(t), sarray(newsize, newtype)}()
     func(left, right)
+end
+
+function _do_contract(left, l, t)
+    newsize = _contract_size([left], [l], t)
+    func = CplContract{(Tuple(l),), Tuple(t), sarray(newsize, eltype(left))}()
+    func(left)
 end
 
 # Fold an evaluable into a contraction as a new argument on the right
@@ -97,10 +103,27 @@ _contract_size(args, indices, target) = let dims = _sizedict(args, indices)
 end
 
 
+# Helper function for applying a mass contraction with optimizations
+# This acts as reduce(Contract, ...) while keeping track of axis labels
+function reduce_contract(args::Vector{<:Evaluable}, indices::Vector{Vector{Int}}, target::Vector{Int})
+    init = (args[1], indices[1])
+    rest = zip(args[2:end], indices[2:end])
+    (full, fulli) = foldl(rest; init=init) do (acc, acci), (arg, argi)
+        newi = vcat(acci, argi)
+        new = Contract(acc, arg, acci, argi, newi)
+        (new, newi)
+    end
+    Contract(full, fulli, target)
+end
+
+
 # Outer constructors with purpose:
 # - Contractions of contractions become bigger contractions
 # - Constants accumulate in the leftmost argument, if any
 # - Contraction involving zero becomes zero
+
+# Single-argument case for extracting diagonals etc.
+Contract(left::Evaluable, l, t) = Contract([left], [l], t)
 
 # Basic conversion of arguments
 Contract(left::Evaluable, right::Evaluable, l, r, t) = Contract([left, right], [l, r], t)
@@ -113,17 +136,22 @@ Contract(left::Evaluable, right::AbstractConstant, l, r, t) = Contract(right, le
 # Immediately compute contractions involving two constants
 Contract(left::AbstractConstant, right::AbstractConstant, l, r, t) =
     convert(Evaluable, _do_contract(valueof(left), valueof(right), l, r, t))
+Contract(left::AbstractConstant, l, t) = convert(Evaluable, _do_contract(valueof(left), l, t))
 
 # Contractions involving contractions become bigger contractions
 Contract(left::Contract, right::Evaluable, l, r, t) = _fold_contract(left, right, l, r, t)
 Contract(left::Evaluable, right::Contract, l, r, t) = _fold_contract(right, left, r, l, t)
+function Contract(left::Contract, l, t)
+    rename = Dict(zip(l, left.target))
+    newtarget = [rename[label] for label in t]
+    Contract(left.args, left.indices, newtarget)
+end
 
 # Combine constants when folding a contraction and a constant
 Contract(left::AbstractConstant, right::Contract, l, r, t) = Contract(right, left, r, l, t)
 function Contract(left::Contract, right::AbstractConstant, l, r, t)
     contract = _fold_contract(left, right, l, r, t)
     if contract.args[1] isa AbstractConstant
-        # rgs, inds = _collapse_constants(args, inds, target, length(args))
         _collapse_constants!(contract, length(contract.args))
     end
     contract
@@ -143,6 +171,7 @@ function Contract(left::Contract, right::Contract, l, r, t)
 end
 
 # Contraction involving zero becomes zero
+Contract(left::Zeros, l, t) = Zeros(eltype(left), _contract_size([left], [l], t)...)
 Contract(left::Evaluable, right::Zeros, l, r, t) = Contract(right, left, r, l, t)
 function Contract(left::Zeros, right::Evaluable, l, r, t)
     newsize = _contract_size([left, right], [l, r], t)
@@ -152,6 +181,7 @@ end
 
 # Contraction must commute with inflation
 Contract(left::Evaluable, right::Inflate, l, r, t) = Contract(right, left, r, l, t)
+
 function Contract(left::Inflate, right::Evaluable, l, r, t)
     infaxis = left.axis
     infid = l[infaxis]
@@ -172,3 +202,5 @@ function Contract(left::Inflate, right::Evaluable, l, r, t)
 
     ret
 end
+
+Contract(left::Inflate, l, t) = throw("not implemented")

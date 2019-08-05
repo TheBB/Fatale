@@ -19,17 +19,13 @@ end
 
 function grad(self::Contract, d::Int)
     next = max(maximum(self.target), (maximum(ind) for ind in self.indices)...) + 1
-
-    terms = Evaluable[]
-    for (i, arg) in enumerate(self.args)
-        grad_arg = grad(arg, d)
-        if !(grad_arg isa Zeros)
-            push!(terms, Contract(
-                Evaluable[self.args[1:i-1]..., grad_arg, self.args[i+1:end]...],
-                Vector{Int}[self.indices[1:i-1]..., Int[self.indices[i]..., next], self.indices[i+1:end]...],
-                Int[self.target..., next]
-            ))
-        end
+    new_target = [self.target..., next]
+    terms = map(enumerate(zip(self.args, self.indices))) do (i, (arg, ind))
+        reduce_contract(
+            [self.args[1:i-1]..., grad(arg, d), self.args[i+1:end]...],
+            [self.indices[1:i-1]..., [ind..., next], self.indices[i+1:end]...],
+            new_target,
+        )
     end
     Add(terms...)
 end
