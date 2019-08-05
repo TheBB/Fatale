@@ -21,9 +21,9 @@ end
 # mimic of type Mimic.
 abstract type ShapeShifter{T} <: Evaluable{T} end
 
-Base.size(self::ShapeShifter{_Array}) = self.mimic.size
-Base.ndims(self::ShapeShifter{_Coords}) = self.mimic.ndims
-Base.eltype(self::ShapeShifter{<:Union{_Array,_Coords}}) = self.mimic.eltype
+size(self::ShapeShifter{_Array}) = self.mimic.size
+ndims(self::ShapeShifter{_Coords}) = self.mimic.ndims
+eltype(self::ShapeShifter{<:Union{_Array,_Coords}}) = self.mimic.eltype
 
 
 """
@@ -70,7 +70,7 @@ end
 ExtractCoords(arg::CoordsEvaluable) = ExtractCoords(arg, 0)
 
 arguments(self::ExtractCoords) = Evaluable[self.arg]
-Base.size(self::ExtractCoords) = ntuple(_->ndims(self.arg), self.stage+1)
+size(self::ExtractCoords) = ntuple(_->ndims(self.arg), self.stage+1)
 codegen(self::ExtractCoords) = CplGetIndex{self.stage+1}()
 
 
@@ -84,8 +84,8 @@ struct ApplyTrans <: CoordsEvaluable
     coords :: CoordsEvaluable
 end
 
-Base.eltype(self::ApplyTrans) = eltype(self.coords)
-Base.ndims(self::ApplyTrans) = ndims(self.coords)
+eltype(self::ApplyTrans) = eltype(self.coords)
+ndims(self::ApplyTrans) = ndims(self.coords)
 arguments(self::ApplyTrans) = Evaluable[self.transform, self.coords]
 
 codegen(self::ApplyTrans) = CplApplyTrans()

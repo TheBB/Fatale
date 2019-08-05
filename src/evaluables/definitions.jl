@@ -24,8 +24,8 @@ function Inflate(arg, indices, newsize)
 end
 
 arguments(self::Inflate) = Evaluable[self.arg, self.indices]
-Base.eltype(self::Inflate) = eltype(self.arg)
-Base.size(self::Inflate) = Tuple(
+eltype(self::Inflate) = eltype(self.arg)
+size(self::Inflate) = Tuple(
     i == self.axis ? self.newsize : size(self.arg, i)
     for i in 1:ndims(self.arg)
 )
@@ -46,12 +46,12 @@ struct ElementIntegral <: ArrayEvaluable
 end
 
 arguments(self::ElementIntegral) = Evaluable[self.arg, ElementData{_Transform}(:loctrans), EvalArg{_Any}(:quadrule)]
-Base.size(self::ElementIntegral) = size(self.arg)
-Base.eltype(self::ElementIntegral) = let t = eltype(self.arg)
+size(self::ElementIntegral) = size(self.arg)
+eltype(self::ElementIntegral) = let t = eltype(self.arg)
     t <: Integer ? Float64 : t
 end
 
-codegen(self::ElementIntegral) = CplElementIntegral(@MArray zeros(eltype(self), size(self)...))
+codegen(self::ElementIntegral) = CplElementIntegral(zero(marray(self)))
 
 
 """
@@ -80,9 +80,9 @@ arguments(self::GetIndex) = Evaluable[
     self.arg,
     Iterators.filter(x->x isa ArrayEvaluable, self.index)...
 ]
-Base.eltype(self::GetIndex) = eltype(self.arg)
+eltype(self::GetIndex) = eltype(self.arg)
 
-function Base.size(self::GetIndex)
+function size(self::GetIndex)
     sz = collect(Int, size(self.arg))
     ret = Int[]
     for ix in self.index
@@ -113,8 +113,8 @@ struct Inv <: ArrayEvaluable
 end
 
 arguments(self::Inv) = Evaluable[self.arg]
-Base.size(self::Inv) = size(self.arg)
-Base.eltype(self::Inv) = let t = eltype(self.arg)
+size(self::Inv) = size(self.arg)
+eltype(self::Inv) = let t = eltype(self.arg)
     t <: Integer ? Float64 : t
 end
 
@@ -138,7 +138,7 @@ end
 Monomials(arg, degree) = Monomials(arg, degree, 0)
 
 arguments(self::Monomials) = Evaluable[self.arg]
-Base.size(self::Monomials) = (size(self.arg)..., self.padding + self.degree + 1)
+size(self::Monomials) = (size(self.arg)..., self.padding + self.degree + 1)
 
 codegen(self::Monomials) = CplMonomials(self.degree, self.padding, eltype(self), size(self))
 
@@ -153,7 +153,7 @@ struct Negate <: ArrayEvaluable
 end
 
 arguments(self::Negate) = Evaluable[self.arg]
-Base.size(self::Negate) = size(self.arg)
+size(self::Negate) = size(self.arg)
 
 codegen(self::Negate) = CplNegate()
 
@@ -175,7 +175,7 @@ struct PermuteDims <: ArrayEvaluable
 end
 
 arguments(self::PermuteDims) = Evaluable[self.arg]
-Base.size(self::PermuteDims) = Tuple(size(self.arg, i) for i in self.perm)
+size(self::PermuteDims) = Tuple(size(self.arg, i) for i in self.perm)
 
 codegen(self::PermuteDims) = CplPermuteDims{self.perm}()
 
@@ -199,7 +199,7 @@ struct Power <: ArrayEvaluable
 end
 
 arguments(self::Power) = Evaluable[self.arg]
-Base.size(self::Power) = size(self.arg)
+size(self::Power) = size(self.arg)
 
 codegen(self::Power) = CplPower{self.exp}()
 
@@ -214,8 +214,8 @@ struct Reciprocal <: ArrayEvaluable
 end
 
 arguments(self::Reciprocal) = Evaluable[self.arg]
-Base.size(self::Reciprocal) = size(self.arg)
-Base.eltype(self::Reciprocal) = let t = eltype(self.arg)
+size(self::Reciprocal) = size(self.arg)
+eltype(self::Reciprocal) = let t = eltype(self.arg)
     t <: Integer ? Float64 : t
 end
 
@@ -234,7 +234,7 @@ struct Reshape <: ArrayEvaluable
 end
 
 arguments(self::Reshape) = Evaluable[self.arg]
-Base.size(self::Reshape) = self.shape
+size(self::Reshape) = self.shape
 
 codegen(self::Reshape) = CplReshape{size(self)}()
 
@@ -249,7 +249,7 @@ struct Sqrt <: ArrayEvaluable
 end
 
 arguments(self::Sqrt) = Evaluable[self.arg]
-Base.size(self::Sqrt) = size(self.arg)
+size(self::Sqrt) = size(self.arg)
 
 codegen(self::Sqrt) = CplSqrt()
 
@@ -275,7 +275,7 @@ struct Sum <: ArrayEvaluable
 end
 
 arguments(self::Sum) = Evaluable[self.arg]
-function Base.size(self::Sum)
+function size(self::Sum)
     if self.collapse
         Tuple(k for (i, k) in enumerate(size(self.arg)) if !(i in self.dims))
     else

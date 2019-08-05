@@ -1,14 +1,13 @@
 module Integrate
 
-import ..Evaluables:
-    OptimizedEvaluable, OptimizedBlockEvaluable, OptimizedSparseEvaluable,
-    ArrayEvaluable, optimize
-import ..Transforms: apply
-import ..Elements: elementdata
+using SparseArrays: sparse!, dropzeros!, nnz
+using StaticArrays: SVector
+using Strided: UnsafeStridedView, sreshape, StridedView
 
-import Strided: UnsafeStridedView, sreshape, StridedView
-import SparseArrays: sparse!, dropzeros!, nnz
-import StaticArrays: SVector
+using ..Elements: elementdata
+using ..Evaluables: OptimizedEvaluable, OptimizedBlockEvaluable, OptimizedSparseEvaluable
+using ..Evaluables: ArrayEvaluable, optimize
+using ..Transforms: apply
 
 export integrate, to
 

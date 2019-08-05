@@ -1,11 +1,11 @@
 module Transforms
 
-import Base.Iterators: flatten, product
-import Base: @_inline_meta
-using LinearAlgebra
-using StaticArrays
+using Base: @_inline_meta
+using Base.Iterators: flatten, product
+using StaticArrays: SVector, SMatrix
+using LinearAlgebra: I
 
-using ..Utils
+import Base: ∘, eltype, length, getindex
 
 export AbstractTransform, todims, fromdims, apply
 export Empty, Affine
@@ -38,11 +38,11 @@ abstract type AbstractTransform{From, To, R<:Real} end
 
 @inline fromdims(::Type{<:AbstractTransform{F}}) where F = F
 @inline todims(::Type{<:AbstractTransform{_F, T}}) where {_F, T} = T
-@inline Base.eltype(::Type{<:AbstractTransform{_F, _T, R}}) where {_F, _T, R} = R
+@inline eltype(::Type{<:AbstractTransform{_F, _T, R}}) where {_F, _T, R} = R
 
 @inline fromdims(t::T) where T<:AbstractTransform = fromdims(T)
 @inline todims(t::T) where T<:AbstractTransform = todims(T)
-@inline Base.eltype(t::T) where T<:AbstractTransform = eltype(T)
+@inline eltype(t::T) where T<:AbstractTransform = eltype(T)
 
 # This is a workaround until we can define functions on abstract types
 # Mostly just to convert a nothing gradient into the identity matrix
@@ -66,9 +66,9 @@ struct Chain{K<:Tuple{Vararg{AbstractTransform}}, From, To, R} <: AbstractTransf
     end
 end
 
-Base.length(self::Chain) = length(self.chain)
-Base.length(::Type{<:Chain{K}}) where K = length(K.parameters)
-@inline Base.getindex(self::Chain, i::Int) = self.chain[i]
+length(self::Chain) = length(self.chain)
+length(::Type{<:Chain{K}}) where K = length(K.parameters)
+@inline getindex(self::Chain, i::Int) = self.chain[i]
 
 @generated function (self::Chain)(x)
     codes = [:(x = self[$i](x)) for i in length(self):-1:1]
@@ -175,7 +175,7 @@ end
 @inline compose(l::Empty, r::Empty) = l
 
 # This is basically reduce(compose, trfs), except type stable
-@generated function Base.:∘(trfs::AbstractTransform...)
+@generated function ∘(trfs::AbstractTransform...)
     l = length(trfs)
     code = :(trfs[$l])
     for i in l-1:-1:1

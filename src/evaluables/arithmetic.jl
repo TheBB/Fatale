@@ -15,7 +15,7 @@ function CommArith(cons, args::Vector{<:ArrayEvaluable})
 end
 
 arguments(self::CommArith) = self.args
-Base.size(self::CommArith) = self.dims
+size(self::CommArith) = self.dims
 
 
 # Outer constructors with purpose:

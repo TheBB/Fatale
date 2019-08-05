@@ -1,11 +1,12 @@
 module Domains
 
-import StaticArrays: SVector, SMatrix
+using StaticArrays: SVector, SMatrix
+using ..Evaluables: Inflate, Monomials, insertaxis, local_point, element_index
+using ..Transforms: Empty, updim, shift, fromdims
+using ..Utils: outer
 
-using ..Transforms
-using ..Elements
-using ..Evaluables
-using ..Utils
+import ..Elements: AbstractElement, SubElement, SimplexReference, TensorReference
+import ..Elements
 
 export Boundary
 export Lagrange
@@ -177,7 +178,7 @@ function local_basis(self::TensorDomain{D}, ::Type{Lagrange}, degree) where D
     poly = Monomials(local_point(D), degree)
     coeffs = inv(range(0, 1, length=degree+1) .^ reshape(0:degree, 1, :))
     coeffs = SMatrix{degree+1, degree+1}(coeffs)
-    basis1d = poly * Constant(coeffs)
+    basis1d = poly * coeffs
 
     # Reshape and form an outer product
     factors = (insertaxis(basis1d[i,:]; left=i-1) for i in 1:D)
@@ -193,7 +194,7 @@ Lagrangian basis.
 function doflist(self::TensorDomain{D}, ::Type{Lagrange}, degree) where D
     strides = cumprod(collect(Int, size(self)) * degree .+ 1)
     strides = [1, strides[1:end-1]...]
-    rootindex = sum(element_index(D) .* Constant(degree * strides); collapse=true)
+    rootindex = sum(element_index(D) .* (degree * strides); collapse=true)
 
     offsets = 0 : degree
     for s in strides[2:end]

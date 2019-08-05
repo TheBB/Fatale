@@ -1,12 +1,11 @@
 module Elements
 
-import Base: @_inline_meta
+using Base: @_inline_meta
 using Base.Iterators: product
-using FastGaussQuadrature
-using StaticArrays
-
-using ..Transforms
-using ..Utils
+using FastGaussQuadrature: gausslegendre
+using StaticArrays: SVector
+using ..Utils: outer
+using ..Transforms: Empty
 
 export ReferenceElement, SimplexReference, TensorReference
 export AbstractElement, AbstractSubElement, SubElement

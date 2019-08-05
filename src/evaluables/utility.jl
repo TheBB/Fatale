@@ -28,9 +28,9 @@ function asevaluable(self::OptimizedBlockEvaluable, _)
     ret
 end
 
-Base.convert(::Type{Evaluable}, x) = asevaluable(x, nothing)
-Base.convert(::Type{Evaluable}, x::Evaluable) = x
-Base.convert(::Type{Evaluable}, ::Colon) = error("length must be specified to transform Colon to Evaluable")
+convert(::Type{Evaluable}, x) = asevaluable(x, nothing)
+convert(::Type{Evaluable}, x::Evaluable) = x
+convert(::Type{Evaluable}, ::Colon) = error("length must be specified to transform Colon to Evaluable")
 
 staticarray(cons, size, eltype) = cons{Tuple{size...}, eltype, length(size), prod(size)}
 staticarray(cons, x) = staticarray(cons, size(x), eltype(x))
@@ -45,17 +45,16 @@ marray(args...) = staticarray(MArray, args...)
 struct Bcast{T<:ArrayEvaluable}
     wrapped :: T
 end
-Base.broadcastable(self::ArrayEvaluable) = Bcast(self)
+broadcastable(self::ArrayEvaluable) = Bcast(self)
 
 # Broadcasting style that overrides everything else
-struct BStyle <: Base.BroadcastStyle end
-Base.BroadcastStyle(::Type{<:Bcast}) = BStyle()
-Base.BroadcastStyle(::BStyle, ::Base.BroadcastStyle) = BStyle()
+struct BStyle <: BroadcastStyle end
+BroadcastStyle(::Type{<:Bcast}) = BStyle()
+BroadcastStyle(::BStyle, ::BroadcastStyle) = BStyle()
 
-const materialize = Base.Broadcast.materialize
-const Bcasted{T} = Base.Broadcast.Broadcasted{BStyle, Nothing, T}
+const Bcasted{T} = Broadcasted{BStyle, Nothing, T}
 
-_unwrap(bc::Base.Broadcast.Broadcasted) = _unwrap(materialize(bc))
+_unwrap(bc::Broadcasted) = _unwrap(materialize(bc))
 _unwrap(bc::Bcast) = bc.wrapped
 _unwrap(bc::Ref) = _unwrap(bc[])
 _unwrap(bc::Val{T}) where T = T
@@ -69,7 +68,7 @@ function materialize(bc::Bcasted{typeof(^)})
     Power(_unwrap(bc.args[1]), bc.args[2])
 end
 
-function materialize(bc::Bcasted{typeof(Base.literal_pow)})
+function materialize(bc::Bcasted{typeof(literal_pow)})
     @assert bc.args[1] isa Ref{typeof(^)}
     @assert length(bc.args) == 3
     Power(_unwrap(bc.args[2]), _unwrap(bc.args[3]))
@@ -90,7 +89,7 @@ end
 # ==============================================================================
 # Methods to other functions
 
-function Base.:*(left::Evaluable, right::Evaluable)
+function *(left::Evaluable, right::Evaluable)
     if ndims(left) == 0 || ndims(right) == 0
         return Multiply(left, right)
     end
@@ -100,20 +99,20 @@ function Base.:*(left::Evaluable, right::Evaluable)
     Contract(left, right, linds, rinds, tinds)
 end
 
-Base.:*(left::Evaluable, right) = left * convert(Evaluable, right)
-Base.:*(left, right::Evaluable) = convert(Evaluable, left) * right
+*(left::Evaluable, right) = left * convert(Evaluable, right)
+*(left, right::Evaluable) = convert(Evaluable, left) * right
 
-Base.:-(self::Evaluable) = Negate(self)
-Base.:-(left::Evaluable, right) = left + (-right)
-Base.:+(left::Evaluable, right::Evaluable) = Add(left, right)
-Base.:+(left::Evaluable, right) = Add(left, right)
-Base.:+(left, right::Evaluable) = Add(left, right)
+-(self::Evaluable) = Negate(self)
+-(left::Evaluable, right) = left + (-right)
++(left::Evaluable, right::Evaluable) = Add(left, right)
++(left::Evaluable, right) = Add(left, right)
++(left, right::Evaluable) = Add(left, right)
 
-Base.getindex(self::Evaluable, index...) = GetIndex(self, index...)
+getindex(self::Evaluable, index...) = GetIndex(self, index...)
 
-Base.inv(self::Evaluable) = Inv(self)
+inv(self::Evaluable) = Inv(self)
 
-function Base.reshape(self::Evaluable, newsize...)
+function reshape(self::Evaluable, newsize...)
     newsize = collect(Any, newsize)
     if (colon_index = findfirst(==(:), newsize)) != nothing
         in_length = prod(size(self))
@@ -127,31 +126,31 @@ function Base.reshape(self::Evaluable, newsize...)
     Reshape(self, newsize...)
 end
 
-function Base.adjoint(self::ArrayEvaluable)
+function adjoint(self::ArrayEvaluable)
     @assert eltype(self) <: Real
     transpose(self)
 end
-function Base.transpose(self::ArrayEvaluable)
+function transpose(self::ArrayEvaluable)
     ndims(self) == 1 && return insertaxis(self; left=1)
     @assert ndims(self) == 2
     permutedims(self, (2, 1))
 end
-Base.permutedims(self::ArrayEvaluable, perm) = PermuteDims(self, perm)
+permutedims(self::ArrayEvaluable, perm) = PermuteDims(self, perm)
 
-Base.sum(self::Evaluable; dims=:, collapse=false) = Sum(self, dims, collapse)
+sum(self::Evaluable; dims=:, collapse=false) = Sum(self, dims, collapse)
 
-LinearAlgebra.dot(left::ArrayEvaluable, right::ArrayEvaluable) = sum(left .* right; collapse=true)
-LinearAlgebra.dot(left::ArrayEvaluable, right) = sum(left .* convert(Evaluable, right); collapse=true)
-LinearAlgebra.dot(left, right::ArrayEvaluable) = sum(convert(Evaluable, left) .* right; collapse=true)
+dot(left::ArrayEvaluable, right::ArrayEvaluable) = sum(left .* right; collapse=true)
+dot(left::ArrayEvaluable, right) = sum(left .* convert(Evaluable, right); collapse=true)
+dot(left, right::ArrayEvaluable) = sum(convert(Evaluable, left) .* right; collapse=true)
 
-LinearAlgebra.normalize(vec) = vec ./ norm(vec, 2)
+normalize(vec) = vec ./ norm(vec, 2)
 
-function LinearAlgebra.norm(self::ArrayEvaluable, p::Real=2)
+function norm(self::ArrayEvaluable, p::Real=2)
     @assert p == 2
     sqrt.(dot(self, self))
 end
 
-LinearAlgebra.norm_sqr(self::ArrayEvaluable) = dot(self, self)
+norm_sqr(self::ArrayEvaluable) = dot(self, self)
 
 
 # ==============================================================================

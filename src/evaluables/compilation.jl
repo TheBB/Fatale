@@ -77,7 +77,7 @@ raw_args(::Type{<:CplElementIntegral}) = (1,)
 
 struct CplMonomials{D,P,T}
     val :: T
-    CplMonomials(degree, padding, eltype, size) = let val = @MArray zeros(eltype, size...)
+    CplMonomials(degree, padding, eltype, size) = let val = zero(marray(size, eltype))
         new{degree, padding, typeof(val)}(val)
     end
 end
@@ -203,8 +203,8 @@ struct EvalSeq{I,K}
     end
 end
 
-Base.length(self::Type{<:EvalSeq{I}}) where I = length(I)
-Base.length(self::EvalSeq{I}) where I = length(I)
+length(self::Type{<:EvalSeq{I}}) where I = length(I)
+length(self::EvalSeq{I}) where I = length(I)
 
 
 """
@@ -288,9 +288,9 @@ size S.
 """
 abstract type AbstractOptimizedEvaluable{T,N,S} <: ArrayEvaluable end
 
-Base.eltype(::AbstractOptimizedEvaluable{T}) where T = T
-Base.ndims(::AbstractOptimizedEvaluable{T,N}) where {T,N} = N
-Base.size(::AbstractOptimizedEvaluable{T,N,S}) where {T,N,S} = S
+eltype(::AbstractOptimizedEvaluable{T}) where T = T
+ndims(::AbstractOptimizedEvaluable{T,N}) where {T,N} = N
+size(::AbstractOptimizedEvaluable{T,N,S}) where {T,N,S} = S
 
 optimize(self::AbstractOptimizedEvaluable) = self
 
@@ -348,10 +348,10 @@ end
 
 OptimizedBlockEvaluable(block::OptimizedBlockEvaluable) = block
 
-Base.eltype(self::OptimizedBlockEvaluable) = eltype(self.data)
-Base.length(self::OptimizedBlockEvaluable) = length(self.data)
-Base.ndims(self::OptimizedBlockEvaluable) = ndims(self.data)
-Base.size(self::OptimizedBlockEvaluable) = size(self.data)
+eltype(self::OptimizedBlockEvaluable) = eltype(self.data)
+length(self::OptimizedBlockEvaluable) = length(self.data)
+ndims(self::OptimizedBlockEvaluable) = ndims(self.data)
+size(self::OptimizedBlockEvaluable) = size(self.data)
 
 
 """
@@ -370,7 +370,7 @@ struct OptimizedSparseEvaluable{T,N,S,K} <: AbstractOptimizedEvaluable{T,N,S}
 end
 
 blocks(self::OptimizedSparseEvaluable) = self.blocks
-SparseArrays.nnz(self::OptimizedSparseEvaluable) = sum(length, self.blocks)
+nnz(self::OptimizedSparseEvaluable) = sum(length, self.blocks)
 
 
 """

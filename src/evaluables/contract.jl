@@ -29,7 +29,7 @@ struct Contract <: ArrayEvaluable
 end
 
 arguments(self::Contract) = self.args
-Base.size(self::Contract) = _contract_size(self.args, self.indices, self.target)
+size(self::Contract) = _contract_size(self.args, self.indices, self.target)
 
 function codegen(self::Contract)
     inds = Tuple(map(Tuple, self.indices))

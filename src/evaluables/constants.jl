@@ -7,9 +7,9 @@ struct Constant <: AbstractConstant
     value :: SArray
 end
 
-Base.eltype(self::Constant) = eltype(self.value)
-Base.ndims(self::Constant) = ndims(self.value)
-Base.size(self::Constant) = size(self.value)
+eltype(self::Constant) = eltype(self.value)
+ndims(self::Constant) = ndims(self.value)
+size(self::Constant) = size(self.value)
 valueof(self::Constant) = self.value
 
 
@@ -22,8 +22,8 @@ struct OneTo <: AbstractConstant
     stop :: Int
 end
 
-Base.eltype(::OneTo) = Int
-Base.size(self::OneTo) = (self.stop,)
+eltype(::OneTo) = Int
+size(self::OneTo) = (self.stop,)
 valueof(self::OneTo) = SOneTo(self.stop)
 
 
@@ -37,8 +37,8 @@ struct FUnitRange <: AbstractConstant
     stop :: Int
 end
 
-Base.eltype(self::FUnitRange) = Int
-Base.size(self::FUnitRange) = (self.stop - self.start + 1,)
+eltype(self::FUnitRange) = Int
+size(self::FUnitRange) = (self.stop - self.start + 1,)
 valueof(self::FUnitRange) = SUnitRange(self.start, self.stop)
 
 
@@ -54,6 +54,6 @@ struct Zeros <: AbstractConstant
 end
 
 Zeros(dims::Int...) = Zeros(Float64, dims...)
-Base.eltype(self::Zeros) = self.eltype
-Base.size(self::Zeros) = self.dims
+eltype(self::Zeros) = self.eltype
+size(self::Zeros) = self.dims
 valueof(self::Zeros) = zero(sarray(self))

@@ -1,5 +1,7 @@
 module Utils
 
+import Base: getindex
+
 export outer, exterior, MemoizedMap, swap!
 
 
@@ -23,7 +25,7 @@ mutable struct MemoizedMap{T}
     end
 end
 
-function Base.getindex(self::MemoizedMap, i::Int)
+function getindex(self::MemoizedMap, i::Int)
     i in keys(self.map) && return self.map[i]
     self.map[i] = self.next
     let retval = self.next

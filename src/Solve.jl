@@ -1,7 +1,7 @@
 module Solve
 
-import ..Utils: exterior
-import ..Integrate: integrate
+using ..Utils: exterior
+using ..Integrate: integrate
 
 export project, project!, solve
 

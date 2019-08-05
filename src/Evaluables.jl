@@ -1,21 +1,22 @@
 module Evaluables
 
-import Base: @_inline_meta
-import Base.Broadcast: broadcast_shape
-import Base.Iterators: isdone, Stateful, flatten, product, countfrom
-using DataStructures
-using LinearAlgebra
-using StaticArrays
-using UnsafeArrays
-using SparseArrays
-import StaticArrays: SOneTo, SUnitRange
+using Base: @_inline_meta
+using Base.Broadcast: broadcast_shape
+using Base.Iterators: isdone, Stateful, flatten, product, countfrom
+using DataStructures: OrderedDict
+using StaticArrays: MArray, SArray, Scalar, SOneTo, SUnitRange, SVector
+using ..Elements: elementdata
+using ..Transforms: apply
+using ..Utils: MemoizedMap
 
-using ..Utils
-using ..Elements
-using ..Transforms
+import Base: eltype, size, ndims, length, map, firstindex, lastindex, show
+import Base: convert, broadcastable, BroadcastStyle, literal_pow, *, -, +
+import Base: getindex, inv, reshape, adjoint, transpose, permutedims, sum
+import Base.Broadcast: materialize, Broadcasted
+import LinearAlgebra: dot, normalize, norm, norm_sqr
+import SparseArrays: nnz
 
-export evalorder
-export optimize, blocks
+export evalorder, optimize, blocks
 export local_point, local_grad, global_point, global_grad, grad, insertaxis, element_index, normal
 export Contract, Constant, ElementIntegral, Inflate, Monomials, Zeros
 
@@ -48,7 +49,7 @@ arguments(::Evaluable) = Evaluable[]
 
 Call *f* for each evaluable in the tree.
 """
-function Base.map(f, self::Evaluable)
+function map(f, self::Evaluable)
     f(self)
     for arg in arguments(self)
         map(f, arg)
@@ -61,19 +62,19 @@ const CoordsEvaluable = Evaluable{_Coords}
 const VarTuple{K} = Tuple{Vararg{K}}
 
 # Default implementations for array interface
-Base.eltype(self::ArrayEvaluable) = mapreduce(eltype, promote_type, arguments(self))
-Base.size(self::ArrayEvaluable, i) = size(self)[i]
-Base.ndims(self::ArrayEvaluable) = length(size(self))
-Base.length(self::ArrayEvaluable) = prod(size(self))
+eltype(self::ArrayEvaluable) = mapreduce(eltype, promote_type, arguments(self))
+size(self::ArrayEvaluable, i) = size(self)[i]
+ndims(self::ArrayEvaluable) = length(size(self))
+length(self::ArrayEvaluable) = prod(size(self))
 
-Base.firstindex(self::ArrayEvaluable) = ntuple(_->1, ndims(self))
-Base.firstindex(::ArrayEvaluable, i) = 1
-Base.lastindex(self::ArrayEvaluable) = size(self)
-Base.lastindex(self::ArrayEvaluable, i) = size(self, i)
+firstindex(self::ArrayEvaluable) = ntuple(_->1, ndims(self))
+firstindex(::ArrayEvaluable, i) = 1
+lastindex(self::ArrayEvaluable) = size(self)
+lastindex(self::ArrayEvaluable, i) = size(self, i)
 
 
-Base.eltype(::CoordsEvaluable) = throw("not implemented")
-Base.ndims(::CoordsEvaluable) = throw("not implemented")
+eltype(::CoordsEvaluable) = throw("not implemented")
+ndims(::CoordsEvaluable) = throw("not implemented")
 
 
 # Supertype for all evaluables with constant value
@@ -107,7 +108,7 @@ include("evaluables/utility.jl")
 include("evaluables/gradients.jl")
 
 
-Base.show(io::IO, self::Evaluable) = print(io, string(typeof(self).name.name), typerepr(self))
+show(io::IO, self::Evaluable) = print(io, string(typeof(self).name.name), typerepr(self))
 
 typerepr(self::Evaluable) = ""
 typerepr(self::ArrayEvaluable) = string("<", join(size(self), ","), ">")
