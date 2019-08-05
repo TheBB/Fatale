@@ -203,4 +203,15 @@ function Contract(left::Inflate, right::Evaluable, l, r, t)
     ret
 end
 
-Contract(left::Inflate, l, t) = throw("not implemented")
+function Contract(left::Inflate, l, t)
+    # Apply the contraction as specified
+    ret = Contract(left.arg, l, t)
+
+    # Inflate the axes that correspond to the originally inflated one, if any
+    new_infaxes = findall(==(l[left.infaxis]), t)
+    for infaxis in new_infaxes
+        ret = Inflate(ret, left.indices, left.newsize, infaxis)
+    end
+
+    ret
+end
