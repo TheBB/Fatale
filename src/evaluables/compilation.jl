@@ -60,42 +60,27 @@ struct CplCommArith{F} end
     $F(args...)
 end
 
-struct CplElementIntegral{T}
-    val :: T
-end
-@inline function (self::CplElementIntegral)(args, sub, loctrans, quadrule)
-    self.val .= zero(eltype(self.val))
+struct CplElementIntegral{T} end
+@inline function (self::CplElementIntegral{T})(args, sub, loctrans, quadrule) where T
+    temp = zero(T)
     (pts, wts) = quadrule
     for (pt, wt) in zip(pts, wts)
         coords = apply(loctrans, (point=pt, grad=nothing))
-        self.val .+= sub((args..., coords=coords)) .* wt
+        temp = temp .+ sub((args..., coords=coords)) .* wt
     end
-    SArray(self.val)
+    temp
 end
 pass_evalargs(::Type{<:CplElementIntegral}) = true
 raw_args(::Type{<:CplElementIntegral}) = (1,)
 
-struct CplMonomials{D,P,T}
-    val :: T
-    CplMonomials(degree, padding, eltype, size) = let val = zero(marray(size, eltype))
-        new{degree, padding, typeof(val)}(val)
-    end
-end
-@generated function (self::CplMonomials{D,P})(arg) where {D,P}
-    colons = [Colon() for _ in 1:ndims(arg)]
-    codes = [
-        :(self.val[$(colons...), $(P+i+1)] .= self.val[$(colons...), $(P+i)] .* arg)
-        for i in 1:D
+struct CplMonomials{D,P,T} end
+@generated function (self::CplMonomials{D,P,T})(arg) where {D,P,T}
+    exprs = [
+        i <= P ? zero(eltype(arg)) : :(arg[$j] ^ $(i-P-1))
+        for i in 1:(P+D+1)
+        for j in CartesianIndices(size(arg))
     ]
-
-    quote
-        @inbounds begin
-            self.val[$(colons...), 1:$P] .= $(zero(eltype(arg)))
-            self.val[$(colons...), $(P+1)] .= $(one(eltype(arg)))
-            $(codes...)
-        end
-        SArray(self.val)
-    end
+    :(@inbounds $T($(exprs...)))
 end
 
 struct CplPermuteDims{I} end

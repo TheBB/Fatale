@@ -51,7 +51,7 @@ eltype(self::ElementIntegral) = let t = eltype(self.arg)
     t <: Integer ? Float64 : t
 end
 
-codegen(self::ElementIntegral) = CplElementIntegral(zero(marray(self)))
+codegen(self::ElementIntegral) = CplElementIntegral{sarray(self)}()
 
 
 """
@@ -140,7 +140,7 @@ Monomials(arg, degree) = Monomials(arg, degree, 0)
 arguments(self::Monomials) = Evaluable[self.arg]
 size(self::Monomials) = (size(self.arg)..., self.padding + self.degree + 1)
 
-codegen(self::Monomials) = CplMonomials(self.degree, self.padding, eltype(self), size(self))
+codegen(self::Monomials) = CplMonomials{self.degree, self.padding, sarray(self)}()
 
 
 """
