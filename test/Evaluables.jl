@@ -207,10 +207,10 @@ end
     quadpt = @SVector [1.0, 2.0, 3.0]
 
     func = optimize(Monomials(local_point(3), 4))
-    @test @inferred(func(element, quadpt)) ≈ [1 1 1 1 1; 1 2 4 8 16; 1 3 9 27 81]
+    @test @inferred(func(element, quadpt)) ≈ [1 1 1; 1 2 3; 1 4 9; 1 8 27; 1 16 81]
 
     func = optimize(Monomials(local_point(3), 4, 2))
-    @test @inferred(func(element, quadpt)) ≈ [0 0 1 1 1 1 1; 0 0 1 2 4 8 16; 0 0 1 3 9 27 81]
+    @test @inferred(func(element, quadpt)) ≈ [0 0 0; 0 0 0; 1 1 1; 1 2 3; 1 4 9; 1 8 27; 1 16 81]
 
     @noallocs begin
         func = optimize(Monomials(local_point(3), 4))

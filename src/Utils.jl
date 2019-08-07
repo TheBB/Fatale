@@ -2,7 +2,10 @@ module Utils
 
 import Base: getindex
 
-export outer, exterior, MemoizedMap, swap!
+export outer, exterior, MemoizedMap, swap, newaxis
+
+
+const newaxis = [CartesianIndex()]
 
 
 """
@@ -62,14 +65,15 @@ end
 """
     exterior(left[, right])
 
-Forms an outer product of the first axes of each argument. If only one
+Forms an outer product of the last axes of each argument. If only one
 argument is given, form the outer product with itself.
 """
 function exterior(left, right)
-    @assert size(left, 1) == size(right, 1)
-    n = size(left, 1)
-    left = reshape(left, n, 1, size(left)[2:end]...)
-    right = reshape(right, 1, n, size(right)[2:end]...)
+    @assert ndims(left) == ndims(right)
+    @assert size(left, ndims(left)) == size(right, ndims(right))
+    n = size(left, ndims(left))
+    left = reshape(left, size(left)[1:end-1]..., n, 1)
+    right = reshape(right, size(right)[1:end-1]..., 1, n)
     left .* right
 end
 

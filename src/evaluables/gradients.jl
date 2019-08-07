@@ -1,29 +1,23 @@
 function grad(self::Evaluable, geom::Evaluable)
     @assert ndims(geom) == 1
     dims = size(geom, 1)
-    grad(self, dims) * inv(grad(geom, dims))
+    inv(grad(geom, dims)) * grad(self, dims)
 end
 
 function grad(self::ExtractCoords, d::Int)
     @assert d == ndims(self.arg)
     @assert 0 <= self.stage <= 1
     self.stage < 1 && return ExtractCoords(self.arg, self.stage + 1)
-    return Zeros(eltype(self), size(self)..., d)
-end
-
-function grad(self::Add, d::Int)
-    maxdims = maximum(ndims(term) for term in self.args)
-    terms = [grad(flushleft(factor, maxdims), d) for factor in self.args]
-    Add(terms...)
+    return Zeros(eltype(self), d, size(self)...)
 end
 
 function grad(self::Contract, d::Int)
     next = max(maximum(self.target), (maximum(ind) for ind in self.indices)...) + 1
-    new_target = [self.target..., next]
+    new_target = [next, self.target...]
     terms = map(enumerate(zip(self.args, self.indices))) do (i, (arg, ind))
         reduce_contract(
             [self.args[1:i-1]..., grad(arg, d), self.args[i+1:end]...],
-            [self.indices[1:i-1]..., [ind..., next], self.indices[i+1:end]...],
+            [self.indices[1:i-1]..., [next, ind...], self.indices[i+1:end]...],
             new_target,
         )
     end
@@ -32,37 +26,28 @@ end
 
 function grad(self::Monomials, d::Int) where {D, P}
     newmono = Monomials(self.arg, self.degree-1, self.padding+1)
-    scale = flushright(Constant(SVector(zeros(Int, self.padding+1)..., 1:self.degree...)), newmono)
-    chain = grad(insertaxis(self.arg; right=1), d)
-    insertaxis(newmono .* scale; right=1) .* chain
+    scale = SVector(zeros(Int, self.padding+1)..., 1:self.degree...)
+    chain = grad(insertaxis(self.arg; left=1), d)
+    insertaxis(newmono .* scale; left=1) .* chain
 end
 
 function grad(self::Multiply, d::Int)
-    maxdims = maximum(ndims(factor) for factor in self.args)
-    reshaped = [insertaxis(flushleft(factor, maxdims); right=1) for factor in self.args]
+    reshaped = [insertaxis(factor; left=1) for factor in self.args]
     terms = Evaluable[]
     for (i, factor) in enumerate(self.args)
-        term = Multiply(reshaped[1:i-1]..., grad(flushleft(factor, maxdims), d), reshaped[i+1:end]...)
+        term = Multiply(reshaped[1:i-1]..., grad(factor, d), reshaped[i+1:end]...)
         push!(terms, term)
     end
     Add(terms...)
 end
 
-grad(self::Power, d::Int) = let inner = grad(self.arg, d)
-    flushleft(self.exp .* Power(self.arg, self.exp - 1), inner) .* inner
-end
-
-grad(self::Reciprocal, d::Int) = let inner = grad(self.arg, d)
-    -inner ./ flushleft(self.^2, inner)
-end
-
-grad(self::Sqrt, d::Int) = let inner = grad(self.arg, d)
-    inner ./ flushleft(2 .* self, inner)
-end
-
-grad(self::Constant, d::Int) = Zeros(eltype(self), size(self)..., d)
-grad(self::GetIndex, d::Int) where I = GetIndex(grad(self.arg, d), self.index..., :)
-grad(self::Inflate, d::Int) = Inflate(grad(self.arg, d), self.indices, self.newsize, self.axis)
-grad(self::Inv, d::Int) = -Contract(self * grad(self.arg, d), self, [1, 2, 3], [2, 4], [1, 4, 3])
-grad(self::Reshape, d::Int) = reshape(grad(self.arg, d), size(self)..., d)
-grad(self::PermuteDims, d::Int) = permutedims(grad(self.arg, d), (self.perm..., ndims(self) + 1))
+grad(self::Add, d::Int) = Add((grad(term, d) for term in self.args)...)
+grad(self::Constant, d::Int) = Zeros(eltype(self), d, size(self)...)
+grad(self::GetIndex, d::Int) where I = GetIndex(grad(self.arg, d), :, self.index...)
+grad(self::Inflate, d::Int) = Inflate(grad(self.arg, d), self.indices, self.newsize, self.axis + 1)
+grad(self::Inv, d::Int) = -Contract(grad(self.arg, d) * self, self, [1, 2, 3], [4, 2], [1, 4, 3])
+grad(self::PermuteDims, d::Int) = permutedims(grad(self.arg, d), (1, map(x->x+1, self.perm)...))
+grad(self::Power, d::Int) = grad(self.arg, d) .* insertaxis(self.exp .* Power(self.arg, self.ex - 1); left=1)
+grad(self::Reciprocal, d::Int) = -grad(self.arg, d) ./ insertaxis(self.^2; left=1)
+grad(self::Reshape, d::Int) = reshape(grad(self.arg, d), d, size(self)...)
+grad(self::Sqrt, d::Int) = grad(self.arg, d) ./ insertaxis(2 .* self; left=1)

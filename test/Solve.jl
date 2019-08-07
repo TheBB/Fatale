@@ -67,7 +67,7 @@ end
         16, 17, 20, 25, 32
     ] ./ 4)
 
-    laplacian = sum(exterior(grad(basis, geom)); dims=(3,), collapse=true)
+    laplacian = sum(exterior(grad(basis, geom)); dims=(1,), collapse=true)
     matrix = integrate(laplacian, domain, quadrule(domain, 5))
     rhs = integrate(-4basis, domain, quadrule(domain, 5))
     lhs = solve(matrix, rhs, cons)

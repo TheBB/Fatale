@@ -77,8 +77,8 @@ struct CplMonomials{D,P,T} end
 @generated function (self::CplMonomials{D,P,T})(arg) where {D,P,T}
     exprs = [
         i <= P ? zero(eltype(arg)) : :(arg[$j] ^ $(i-P-1))
-        for i in 1:(P+D+1)
         for j in CartesianIndices(size(arg))
+        for i in 1:(P+D+1)
     ]
     :(@inbounds $T($(exprs...)))
 end

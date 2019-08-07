@@ -171,10 +171,10 @@ global_grad(n) = ExtractCoords(global_coords(n), 1)
 function normal(geom)
     @assert ndims(geom) == 1
     lgrad = grad(geom, size(geom, 1))
-    size(geom, 1) == 1 && return normalize(lgrad[:,end])
-    G = lgrad[:, 1:end-1]
-    n = lgrad[:, end]
-    normalize(n - G * inv(G' * G) * G' * n)
+    size(geom, 1) == 1 && return normalize(lgrad[end,:])
+    G = lgrad[1:end-1, :]
+    n = lgrad[end, :]
+    normalize(n - G' * inv(G * G') * G * n)
 end
 
 
