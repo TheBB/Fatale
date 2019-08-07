@@ -208,14 +208,12 @@ function Reshape(self::Inflate, newsize...)
     infaxis = self.axis
     newsize = collect(Int, newsize)
 
-    if infaxis == 1
-        new_infaxis = something(findfirst(!(==(1)), newsize))
-    else
-        before = prod(size(self)[1:infaxis-1])
-        new_infaxis = something(findfirst(==(before), cumprod(newsize))) + 1
-    end
+    preproduct = prod(size(self)[1:infaxis])
+    haystack = collect(zip(newsize, cumprod(newsize)))
+    new_infaxis = something(findfirst(haystack) do (sz, pr)
+        sz == size(self, infaxis) && pr == preproduct
+    end)
 
-    @assert newsize[new_infaxis] == size(self, infaxis)
     newsize[new_infaxis] = size(self.arg, infaxis)
     Inflate(reshape(self.arg, newsize...), self.indices, self.newsize, new_infaxis)
 end
