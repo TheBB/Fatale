@@ -4,6 +4,7 @@ using Base: @_inline_meta
 using Base.Iterators: flatten, product
 using StaticArrays: SVector, SMatrix
 using LinearAlgebra: I
+using ..Utils: newaxis
 
 import Base: ∘, eltype, length, getindex
 
@@ -112,33 +113,34 @@ end
 @inline (self::Affine)(point) = self.matrix * point + self.vector
 @inline (self::Affine)(x::Coords) = (
     point = self.matrix * x.point + self.vector,
-    grad = _exterior(self.matrix * x.grad, self.flipped)
+    grad = _exterior(x.grad * self.matrix', self.flipped)
 )
 
 @generated function _exterior(matrix, flipped)
-    to = size(matrix, 1)
-    from = size(matrix, 2)
+    to = size(matrix, 2)
+    from = size(matrix, 1)
     R = eltype(matrix)
 
     from == to && return :(matrix)
     @assert to == from + 1
     @assert 1 <= to <= 3
 
-    # Exterior: Add a new column orthogonal to all the existing ones
-    src_cols = [[:(matrix[$i,$j]) for i in 1:to] for j in 1:from]
+    # Exterior: Add a new row orthogonal to all the existing ones
+    elements = [:(matrix[$i]) for i in LinearIndices(size(matrix))]
+
     if to == 1
-        new_col = [:(one($R))]
+        new_row = [:(one($R))]
     elseif to == 2
-        ((a, b),) = src_cols
-        new_col = [b, :(-$a)]
+        (a, b) = elements
+        new_row = [b, :(-$a)]
     elseif to == 3
-        ((a, c, e), (b, d, f)) = src_cols
-        new_col = [:($c*$f - $e*$d), :($e*$b - $a*$f), :($a*$d - $c*$b)]
+        (a, b, c, d, e, f) = elements
+        new_row = [:($c*$f - $e*$d), :($e*$b - $a*$f), :($a*$d - $c*$b)]
     end
 
-    new_col = [:((1-2*Int(flipped))*$c) for c in new_col]
+    new_row = [:((1-2*Int(flipped))*$c) for c in new_row]
+    elements = vcat(elements, new_row[newaxis, :])
 
-    elements = flatten((src_cols..., new_col))
     quote
         @_inline_meta
         SMatrix{$to,$to}($(elements...))

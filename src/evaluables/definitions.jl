@@ -127,7 +127,7 @@ codegen(self::Inv) = CplInv()
 Computes all monomials of *arg* up to *degree*, with *padding* leading
 zeros, yielding an array of size
 
-    (size(arg)..., padding + degree + 1).
+    (padding + degree + 1, size(arg)...).
 """
 struct Monomials <: ArrayEvaluable
     arg :: ArrayEvaluable
@@ -138,7 +138,7 @@ end
 Monomials(arg, degree) = Monomials(arg, degree, 0)
 
 arguments(self::Monomials) = Evaluable[self.arg]
-size(self::Monomials) = (size(self.arg)..., self.padding + self.degree + 1)
+size(self::Monomials) = (self.padding + self.degree + 1, size(self.arg)...)
 
 codegen(self::Monomials) = CplMonomials{self.degree, self.padding, sarray(self)}()
 

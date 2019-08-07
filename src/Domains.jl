@@ -176,12 +176,11 @@ basis.
 function local_basis(self::TensorDomain{D}, ::Type{Lagrange}, degree) where D
     # Generate D single-dimensional Lagrangian bases
     poly = Monomials(local_point(D), degree)
-    coeffs = inv(range(0, 1, length=degree+1) .^ reshape(0:degree, 1, :))
-    coeffs = SMatrix{degree+1, degree+1}(coeffs)
-    basis1d = poly * coeffs
+    coeffs = inv(range(0, 1, length=degree+1)' .^ (0:degree))
+    basis1d = coeffs * poly
 
     # Reshape and form an outer product
-    factors = (insertaxis(basis1d[i,:]; left=i-1) for i in 1:D)
+    factors = (insertaxis(basis1d[:,i]; left=i-1) for i in 1:D)
     return reshape(outer(factors...), :)
 end
 

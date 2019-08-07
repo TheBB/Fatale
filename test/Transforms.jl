@@ -10,7 +10,7 @@
 
     coords = apply(trf, (point=initial, grad=nothing))
     @test coords.point == mx * initial + vec
-    @test coords.grad == mx
+    @test coords.grad == mx'
 
     @noallocs begin
         mx = @SMatrix rand(3,3)
@@ -99,22 +99,22 @@ end
 
     # Dimension 2 -> 3
     initial = @SVector rand(2)
-    igrad = SMatrix{2,2}(1.0, 2.0, 3.0, 4.0)
+    igrad = SMatrix{2,2}(1.0, 3.0, 2.0, 4.0)
 
     trf = updim(Val(3), 1, value)
     coords = trf((point=initial, grad=igrad))
     @test coords.point == [value, initial...]
-    @test coords.grad == [0 0 -2; 1 3 0; 2 4 0]
+    @test coords.grad == [0 1 2; 0 3 4; -2 0 0]
 
     trf = updim(Val(3), 2, value)
     coords = trf((point=initial, grad=igrad))
     @test coords.point == [initial[1], value, initial[2]]
-    @test coords.grad == [1 3 0; 0 0 2; 2 4 0]
+    @test coords.grad == [1 0 2; 3 0 4; 0 2 0]
 
     trf = updim(Val(3), 3, value)
     coords = trf((point=initial, grad=igrad))
     @test coords.point == [initial..., value]
-    @test coords.grad == [1 3 0; 2 4 0; 0 0 -2]
+    @test coords.grad == [1 2 0; 3 4 0; 0 0 -2]
 
     # Dimension 1 -> 2
     initial = @SVector rand(1)
@@ -148,5 +148,4 @@ end
             apply(trf, (point=$initial, grad=nothing))
         end
     end
-
 end

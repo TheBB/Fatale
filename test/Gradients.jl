@@ -32,14 +32,14 @@ end
 
     ufunc = Monomials(geom, 4)
 
-    res = optimize(grad(ufunc[1,:], geom))(element, quadpt)
-    @test res ≈ [0 0 0; 1 0 0; 2 0 0; 3 0 0; 4 0 0]
+    res = optimize(grad(ufunc[:,1], geom))(element, quadpt)
+    @test res ≈ [0 1 2 3 4; 0 0 0 0 0; 0 0 0 0 0]
 
-    res = optimize(grad(ufunc[2,:], geom))(element, quadpt)
-    @test res ≈ [0 0 0; 0 1 0; 0 4 0; 0 12 0; 0 32 0]
+    res = optimize(grad(ufunc[:,2], geom))(element, quadpt)
+    @test res ≈ [0 0 0 0 0; 0 1 4 12 32; 0 0 0 0 0]
 
-    res = optimize(grad(ufunc[3,:], geom))(element, quadpt)
-    @test res ≈ [0 0 0; 0 0 1; 0 0 6; 0 0 27; 0 0 108]
+    res = optimize(grad(ufunc[:,3], geom))(element, quadpt)
+    @test res ≈ [0 0 0 0 0; 0 0 0 0 0; 0 1 6 27 108]
 end
 
 
@@ -51,19 +51,20 @@ end
 
     ufunc = grad(Monomials(geom, 4), geom)
     res = optimize(ufunc)(element, quadpt)
-    @test res[:,:,1] ≈ [0 1 2 3 4; 0 0 0 0 0; 0 0 0 0 0]
-    @test res[:,:,2] ≈ [0 0 0 0 0; 0 1 4 12 32; 0 0 0 0 0]
-    @test res[:,:,3] ≈ [0 0 0 0 0; 0 0 0 0 0; 0 1 6 27 108]
+    @test res[1,:,:] ≈ [0 0 0; 1 0 0; 2 0 0; 3 0 0; 4 0 0]
+    @test res[2,:,:] ≈ [0 0 0; 0 1 0; 0 4 0; 0 12 0; 0 32 0]
+    @test res[3,:,:] ≈ [0 0 0; 0 0 1; 0 0 6; 0 0 27; 0 0 108]
 
     ufunc = grad(ufunc, geom)
     res = optimize(ufunc)(element, quadpt)
-    @test res[:,:,1,1] ≈ [0 0 2 6 12; 0 0 0 0 0; 0 0 0 0 0]
-    @test res[:,:,2,2] ≈ [0 0 0 0 0; 0 0 2 12 48; 0 0 0 0 0]
-    @test res[:,:,3,3] ≈ [0 0 0 0 0; 0 0 0 0 0; 0 0 2 18 108]
+    @test res[1,1,:,:] ≈ [0 0 0; 0 0 0; 2 0 0; 6 0 0; 12 0 0]
+    @test res[2,2,:,:] ≈ [0 0 0; 0 0 0; 0 2 0; 0 12 0; 0 48 0]
+    @test res[3,3,:,:] ≈ [0 0 0; 0 0 0; 0 0 2; 0 0 18; 0 0 108]
+
     @test (
-        res[:,:,1,2] ≈ res[:,:,1,3] ≈ res[:,:,2,1] ≈
-        res[:,:,2,3] ≈ res[:,:,3,1] ≈ res[:,:,3,2] ≈
-        zeros(3,5)
+        res[1,2,:,:] ≈ res[1,3,:,:] ≈ res[2,1,:,:] ≈
+        res[2,3,:,:] ≈ res[3,1,:,:] ≈ res[3,2,:,:] ≈
+        zeros(5,3)
     )
 end
 
@@ -76,19 +77,19 @@ end
 
     ufunc = grad(reshape(geom, 1, :) .* geom, geom)
     res = optimize(ufunc)(element, quadpt)
-    @test res[:,:,1] ≈ [2 2 3; 2 0 0; 3 0 0]
-    @test res[:,:,2] ≈ [0 1 0; 1 4 3; 0 3 0]
-    @test res[:,:,3] ≈ [0 0 1; 0 0 2; 1 2 6]
+    @test res[1,:,:] ≈ [2 2 3; 2 0 0; 3 0 0]
+    @test res[2,:,:] ≈ [0 1 0; 1 4 3; 0 3 0]
+    @test res[3,:,:] ≈ [0 0 1; 0 0 2; 1 2 6]
 
     ufunc = grad(ufunc, geom)
     res = optimize(ufunc)(element, quadpt)
-    @test res[:,:,1,1] ≈ [2 0 0; 0 0 0; 0 0 0]
-    @test res[:,:,1,2] ≈ [0 1 0; 1 0 0; 0 0 0]
-    @test res[:,:,1,3] ≈ [0 0 1; 0 0 0; 1 0 0]
-    @test res[:,:,2,1] ≈ [0 1 0; 1 0 0; 0 0 0]
-    @test res[:,:,2,2] ≈ [0 0 0; 0 2 0; 0 0 0]
-    @test res[:,:,2,3] ≈ [0 0 0; 0 0 1; 0 1 0]
-    @test res[:,:,3,1] ≈ [0 0 1; 0 0 0; 1 0 0]
-    @test res[:,:,3,2] ≈ [0 0 0; 0 0 1; 0 1 0]
-    @test res[:,:,3,3] ≈ [0 0 0; 0 0 0; 0 0 2]
+    @test res[1,1,:,:] ≈ [2 0 0; 0 0 0; 0 0 0]
+    @test res[2,1,:,:] ≈ [0 1 0; 1 0 0; 0 0 0]
+    @test res[3,1,:,:] ≈ [0 0 1; 0 0 0; 1 0 0]
+    @test res[1,2,:,:] ≈ [0 1 0; 1 0 0; 0 0 0]
+    @test res[2,2,:,:] ≈ [0 0 0; 0 2 0; 0 0 0]
+    @test res[3,2,:,:] ≈ [0 0 0; 0 0 1; 0 1 0]
+    @test res[1,3,:,:] ≈ [0 0 1; 0 0 0; 1 0 0]
+    @test res[2,3,:,:] ≈ [0 0 0; 0 0 1; 0 1 0]
+    @test res[3,3,:,:] ≈ [0 0 0; 0 0 0; 0 0 2]
 end
