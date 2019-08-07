@@ -221,7 +221,9 @@ end
 function Sum(self::Inflate, dims, collapse::Bool)
     # TODO: Temporary restriction
     @assert !(self.axis in dims)
-    Inflate(sum(self.arg; dims=dims, collapse=collapse), self.indices, self.newsize, self.axis)
+    new_infaxis = self.axis
+    collapse && (new_infaxis -= sum(dims .< self.axis))
+    Inflate(sum(self.arg; dims=dims, collapse=collapse), self.indices, self.newsize, new_infaxis)
 end
 
 Sqrt(self::AbstractConstant) = convert(Evaluable, sqrt.(valueof(self)))
