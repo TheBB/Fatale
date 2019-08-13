@@ -18,6 +18,13 @@ arguments(self::CommArith) = self.args
 size(self::CommArith) = self.dims
 
 
+# More than two arguments are treated by reduction
+function CommArith(cons::Type{<:CommArith}, a::ArrayEvaluable, b::ArrayEvaluable, rest::ArrayEvaluable...)
+    reducer = (l, r) -> CommArith(cons, l, r)
+    reduce(reducer, [a, b, rest...])
+end
+
+
 # Outer constructors with purpose:
 # - CommAriths of other CommAriths become bigger CommAriths
 # - Constants accumulate in the leftmost argument, if any
