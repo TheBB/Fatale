@@ -175,60 +175,26 @@ end
 # ==============================================================================
 # Evaluation sequences
 
+abstract type EvalMode end
+struct Normal <: EvalMode end
+struct Timed <: EvalMode end
+
 # I: Tuple of integer tuples, I[k] are all functions indices whose
 # outputs form the inputs of the function at index k.
-struct EvalSeq{I,K}
+struct EvalSeq{I,K,M<:EvalMode}
     funcs :: K
 
-    function EvalSeq(func::Evaluable)
+    function EvalSeq(func::Evaluable, mode::Type{<:EvalMode})
         sequence = linearize(func)
         callables = Tuple(codegen(stage.func) for stage in sequence)
         inds = Tuple(Tuple(stage.arginds) for stage in sequence)
-        new{inds, typeof(callables)}(callables)
+        new{inds, typeof(callables), mode}(callables)
     end
 end
 
 length(self::Type{<:EvalSeq{I}}) where I = length(I)
 length(self::EvalSeq{I}) where I = length(I)
 
-
-"""
-    (::EvalSeq)([index::Val{k},] evalargs::NamedTuple)
-
-Evaluate an evaluation sequence at some collection of
-arguments. Returns the result of the function at index *k*, or the
-result of the full evaluation sequence if not given.
-"""
-@generated function (self::EvalSeq{I,K})(::Val{N}, evalargs::NamedTuple) where {N,I,K}
-    seq = _sequence(I, N, K.parameters)
-    syms = [gensym() for _ in 1:length(self)]
-
-    argexprs = map(enumerate(seq)) do (i, tgt)
-        args = Union{Expr,Symbol}[syms[dep] for dep in I[tgt]]
-
-        blocktype = K.parameters[tgt]
-        for idx in raw_args(blocktype)
-            args[idx] = :(TargetedEvalSeq(self, Val($(I[tgt][idx]))))
-        end
-
-        pass_evalargs(blocktype) && pushfirst!(args, :evalargs)
-        return args
-    end
-
-    codes = map(zip(seq, syms[seq], argexprs)) do (i, sym, args)
-        :($sym = self.funcs[$i]($(args...)))
-    end
-
-    quote
-        $(codes...)
-        $(syms[N])
-    end
-end
-
-@generated (self::EvalSeq)(evalargs::NamedTuple) = quote
-    @_inline_meta
-    self(Val($(length(self))), evalargs)
-end
 
 function _sequence(I, N, functypes)
     seq = Set{Int}()
@@ -245,6 +211,61 @@ function _sequence!(ret, I, tgt, functypes)
 end
 
 
+"""
+    (::EvalSeq)([index::Val{k},] evalargs::NamedTuple)
+
+Evaluate an evaluation sequence at some collection of
+arguments. Returns the result of the function at index *k*, or the
+result of the full evaluation sequence if not given.
+"""
+@generated function (self::EvalSeq{deps, K, mode})(::Val{target}, evalargs::NamedTuple) where {deps, K, mode, target}
+    blocktypes = K.parameters
+    seq = _sequence(deps, target, blocktypes)
+    syms = [gensym() for _ in 1:length(blocktypes)]
+
+    argexprs = map(enumerate(seq)) do (i, tgt)
+        args = Union{Expr,Symbol}[syms[dep] for dep in deps[tgt]]
+        for idx in raw_args(blocktypes[tgt])
+            args[idx] = :(TargetedEvalSeq(self, Val($(deps[tgt][idx]))))
+        end
+        pass_evalargs(blocktypes[tgt]) && pushfirst!(args, :evalargs)
+        return args
+    end
+
+    codes = map(zip(seq, argexprs)) do (i, args)
+        code = :(self.funcs[$i]($(args...)))
+        if mode == Timed
+            name = @sprintf "%2d: %s" i blocktypes[i]
+            code = :(@timeit(to, $name, $code))
+        end
+        return code
+        # return quote
+        #     println(string("at ", $i))
+        #     $code
+        # end
+    end
+
+    pre = mode == Timed ? :(to = TimerOutput()) : :()
+    post = mode == Timed ? :((!haskey(evalargs, :disp) || evalargs.disp) && println(to)) : :()
+
+    codes = map(zip(syms[seq], codes)) do (sym, code)
+        :($sym = $code)
+    end
+
+    quote
+        $pre
+        $(codes...)
+        $post
+        $(syms[target])
+    end
+end
+
+@generated (self::EvalSeq)(evalargs::NamedTuple) = quote
+    @_inline_meta
+    self(Val($(length(self))), evalargs)
+end
+
+
 # Helper struct for bundling together an evaluation sequence and a target function index
 struct TargetedEvalSeq{S<:EvalSeq, I<:Val}
     sequence :: S
@@ -252,7 +273,7 @@ struct TargetedEvalSeq{S<:EvalSeq, I<:Val}
 end
 
 TargetedEvalSeq(seq::EvalSeq) = TargetedEvalSeq(seq, Val(length(seq)))
-TargetedEvalSeq(func::Evaluable) = TargetedEvalSeq(EvalSeq(func))
+TargetedEvalSeq(func::Evaluable, mode::Type{<:EvalMode}) = TargetedEvalSeq(EvalSeq(func, mode))
 
 @inline (self::TargetedEvalSeq)(evalargs::NamedTuple) = self.sequence(self.target, evalargs)
 
@@ -288,8 +309,8 @@ The most fundamental form of optimized evaluable.
 struct OptimizedEvaluable{T,N,S,F<:TargetedEvalSeq} <: AbstractOptimizedEvaluable{T,N,S}
     sequence :: F
 
-    function OptimizedEvaluable(func::ArrayEvaluable)
-        seq = TargetedEvalSeq(func)
+    function OptimizedEvaluable(func::ArrayEvaluable, mode::Type{<:EvalMode}=Normal)
+        seq = TargetedEvalSeq(func, mode)
         new{eltype(func), ndims(func), size(func), typeof(seq)}(seq)
     end
 end
@@ -324,14 +345,14 @@ struct OptimizedBlockEvaluable{N, I<:VarTuple{OptimizedEvaluable}, D<:OptimizedE
     indices :: I
     data :: D
 
-    function OptimizedBlockEvaluable(block)
+    function OptimizedBlockEvaluable(block, mode::Type{<:EvalMode}=Normal)
         indices = Tuple(OptimizedEvaluable(ind) for ind in block.indices)
-        data = OptimizedEvaluable(block.data)
+        data = OptimizedEvaluable(block.data, mode)
         new{length(indices), typeof(indices), typeof(data)}(indices, data)
     end
 end
 
-OptimizedBlockEvaluable(block::OptimizedBlockEvaluable) = block
+OptimizedBlockEvaluable(block::OptimizedBlockEvaluable, _) = block
 
 eltype(self::OptimizedBlockEvaluable) = eltype(self.data)
 length(self::OptimizedBlockEvaluable) = length(self.data)
@@ -348,8 +369,8 @@ each of type OptimizedBlockEvaluable.
 struct OptimizedSparseEvaluable{T,N,S,K} <: AbstractOptimizedEvaluable{T,N,S}
     blocks :: K
 
-    function OptimizedSparseEvaluable(blocks, func)
-        arg = Tuple(OptimizedBlockEvaluable(block) for block in blocks)
+    function OptimizedSparseEvaluable(blocks, func, mode::Type{<:EvalMode}=Normal)
+        arg = Tuple(OptimizedBlockEvaluable(block, mode) for block in blocks)
         new{eltype(func), ndims(func), size(func), typeof(arg)}(arg)
     end
 end
@@ -368,12 +389,12 @@ Otherwise it will return an OptimizedSparseEvaluable.
 
 A trivial evaluable consists of one block with OneTo-type indices.
 """
-function optimize(self::ArrayEvaluable)
+function optimize(self::ArrayEvaluable, mode::Type{<:EvalMode}=Normal)
     blks = collect(Any, blocks(self))
     if length(blks) == 1 && _istrivial(blks[1]) && size(blks[1].data) == size(self)
-        OptimizedEvaluable(self)
+        OptimizedEvaluable(self, mode)
     else
-        OptimizedSparseEvaluable(blks, self)
+        OptimizedSparseEvaluable(blks, self, mode)
     end
 end
 

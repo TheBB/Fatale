@@ -4,7 +4,9 @@ using Base: @_inline_meta
 using Base.Broadcast: broadcast_shape
 using Base.Iterators: isdone, Stateful, flatten, product, countfrom
 using DataStructures: OrderedDict
+using Printf: @sprintf
 using StaticArrays: MArray, SArray, Scalar, SOneTo, SUnitRange, SVector
+using TimerOutputs: @timeit, TimerOutput
 using ..Elements: elementdata
 using ..Transforms: apply
 using ..Utils: MemoizedMap
