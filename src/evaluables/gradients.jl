@@ -24,6 +24,16 @@ function grad(self::Contract, d::Int)
     Add(terms...)
 end
 
+function grad(self::LocalPoint, d::Int)
+    @assert (d,) == size(self)
+    LocalGrad(d, eltype(self))
+end
+
+function grad(self::LocalGrad, d::Int)
+    @assert (d,d) == size(self)
+    Zeros(eltype(self), d, d, d)
+end
+
 function grad(self::Monomials, d::Int) where {D, P}
     newmono = Monomials(self.arg, self.degree-1, self.padding+1)
     scale = SVector(zeros(Int, self.padding+1)..., 1:self.degree...)

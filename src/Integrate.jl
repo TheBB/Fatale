@@ -79,7 +79,8 @@ function _integrate(block::OptimizedBlockEvaluable{1}, domain, args, V)
         @assert _t isa Empty
         for (pt, wt) in zip(pts, wts)
             coords = apply(loctrans, (point=pt, grad=nothing))
-            V[I] .+= block.data((element=element, coords=coords, args...)) .* wt
+            point, locgrad = coords
+            V[I] .+= block.data(point, locgrad, (element=element, coords=coords, args...)) .* wt
         end
     end
 end
@@ -119,7 +120,8 @@ function _integrate(block::OptimizedBlockEvaluable{2}, domain, args, I, J, V)
         @assert _t isa Empty
         for (pt, wt) in zip(pts, wts)
             coords = apply(loctrans, (point=pt, grad=nothing))
-            V[:,:,i] .+= block.data((element=element, coords=coords, args...)) .* wt
+            point, locgrad = coords
+            V[:,:,i] .+= block.data(point, locgrad, (element=element, coords=coords, args...)) .* wt
         end
     end
 end

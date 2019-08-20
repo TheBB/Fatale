@@ -7,10 +7,14 @@ pass_evalargs(::Type{<:Any}) = false
 # Tuple of argument indices that should be passed in raw form
 raw_args(::Type{<:Any}) = ()
 
+struct CplRawArg{N} end
+@inline (::CplRawArg{N})(args...) where N = args[N]
+pass_evalargs(::Type{<:CplRawArg}) = true
+
 struct CplEvalArg{T} end
-@generated (::CplEvalArg{T})(arg) where T = quote
+@generated (::CplEvalArg{T})(_, _, evalargs) where T = quote
     @_inline_meta
-    arg.$T
+    evalargs.$T
 end
 pass_evalargs(::Type{<:CplEvalArg}) = true
 
@@ -64,12 +68,13 @@ struct CplCommArith{F} end
 end
 
 struct CplElementIntegral{T} end
-@inline function (self::CplElementIntegral{T})(args, sub, loctrans, quadrule) where T
+@inline function (self::CplElementIntegral{T})(_, _, args, sub, loctrans, quadrule) where T
     temp = zero(T)
     (pts, wts) = quadrule
     for (pt, wt) in zip(pts, wts)
         coords = apply(loctrans, (point=pt, grad=nothing))
-        temp = temp .+ sub((args..., coords=coords)) .* wt
+        point, locgrad = coords
+        temp = temp .+ sub(point, locgrad, (args..., coords=coords)) .* wt
     end
     temp
 end
@@ -202,7 +207,7 @@ Evaluate an evaluation sequence at some collection of
 arguments. Returns the result of the function at index *k*, or the
 result of the full evaluation sequence if not given.
 """
-@generated function (self::EvalSeq{I,K})(::Val{N}, evalargs::NamedTuple) where {N,I,K}
+@generated function (self::EvalSeq{I,K})(::Val{N}, point, locgrad, evalargs::NamedTuple) where {N,I,K}
     seq = _sequence(I, N, K.parameters)
     syms = [gensym() for _ in 1:length(self)]
 
@@ -214,7 +219,11 @@ result of the full evaluation sequence if not given.
             args[idx] = :(TargetedEvalSeq(self, Val($(I[tgt][idx]))))
         end
 
-        pass_evalargs(blocktype) && pushfirst!(args, :evalargs)
+        if pass_evalargs(blocktype)
+            pushfirst!(args, :evalargs)
+            pushfirst!(args, :locgrad)
+            pushfirst!(args, :point)
+        end
         return args
     end
 
@@ -257,7 +266,8 @@ end
 TargetedEvalSeq(seq::EvalSeq) = TargetedEvalSeq(seq, Val(length(seq)))
 TargetedEvalSeq(func::Evaluable) = TargetedEvalSeq(EvalSeq(func))
 
-@inline (self::TargetedEvalSeq)(evalargs::NamedTuple) = self.sequence(self.target, evalargs)
+@inline (self::TargetedEvalSeq)(point, locgrad, evalargs::NamedTuple) =
+    self.sequence(self.target, point, locgrad, evalargs)
 
 pass_evalargs(::Type{TargetedEvalSeq}) = true
 
@@ -307,17 +317,20 @@ Evaluate an optimized evaluable with a collection of input arguments.
 The second call is equivalent to a minimal argument tuple with
 *element* and *coords* (the latter of which may be Nothing).
 """
-@inline function (self::OptimizedEvaluable)(element, quadpt::Nothing)
-    self((element=element, coords=(point=nothing, grad=nothing)))
+@inline function (self::OptimizedEvaluable)(element::Maybe{AbstractElement}, quadpt::Nothing)
+    self(nothing, nothing, (element=element, coords=(point=nothing, grad=nothing)))
+    # self((element=element, coords=(point=nothing, grad=nothing)))
 end
 
-@inline function (self::OptimizedEvaluable)(element, quadpt::SVector{N,T}) where {N,T}
+@inline function (self::OptimizedEvaluable)(element::AbstractElement, quadpt::SVector)
     trans = elementdata(element, Val{:loctrans}())
     coords = apply(trans, (point=quadpt, grad=nothing))
-    self((element=element, coords=coords))
+    point, locgrad = coords
+    self(point, locgrad, (element=element, coords=coords))
 end
 
-@inline (self::OptimizedEvaluable)(evalargs::NamedTuple) = self.sequence(evalargs)
+@inline (self::OptimizedEvaluable)(point::Maybe{SVector}, locgrad::Maybe{SMatrix}, evalargs::NamedTuple) =
+    self.sequence(point, locgrad, evalargs)
 
 
 # A block is a dense array (an OptimizedEvaluable) together with a

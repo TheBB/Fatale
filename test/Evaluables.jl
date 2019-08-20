@@ -125,10 +125,10 @@ end
     )
 
     element = Element(Empty(2))
-    @test @inferred(func((quadrule=quadrule, element=element))) ≈ [0.5, 0.5]
+    @test @inferred(func(nothing, nothing, (quadrule=quadrule, element=element))) ≈ [0.5, 0.5]
 
     element = Element(shift(SVector(2.0, 3.0)))
-    @test @inferred(func((quadrule=quadrule, element=element))) ≈ [2.5, 3.5]
+    @test @inferred(func(nothing, nothing, (quadrule=quadrule, element=element))) ≈ [2.5, 3.5]
 end
 
 

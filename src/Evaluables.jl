@@ -2,11 +2,11 @@ module Evaluables
 
 using Base: @_inline_meta
 using Base.Broadcast: broadcast_shape
-using Base.Iterators: isdone, Stateful, flatten, product, countfrom
+using Base.Iterators: flatten, product
 using DataStructures: OrderedDict
-using StaticArrays: MArray, SArray, Scalar, SOneTo, SUnitRange, SVector
-using ..Elements: elementdata
-using ..Transforms: apply, isupdim, splittrf
+using StaticArrays: MArray, SArray, Scalar, SOneTo, SUnitRange, SVector, SMatrix
+using ..Elements: AbstractElement, elementdata
+using ..Transforms: apply, isupdim
 using ..Utils: MemoizedMap
 
 import Base: eltype, size, ndims, length, map, firstindex, lastindex, show
@@ -60,6 +60,7 @@ end
 const ArrayEvaluable = Evaluable{_Array}
 const CoordsEvaluable = Evaluable{_Coords}
 const VarTuple{K} = Tuple{Vararg{K}}
+const Maybe{K} = Union{K, Nothing}
 
 # Default implementations for array interface
 eltype(self::ArrayEvaluable) = mapreduce(eltype, promote_type, arguments(self))
