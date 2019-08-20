@@ -40,6 +40,14 @@ struct CplGetIndex{T} end
 @inline (::CplGetIndex{Nothing})(arg, indices...) = @inbounds arg[indices...]
 @inline (::CplGetIndex{T})(arg) where T = @inbounds arg[T]
 
+struct CplGradient{S} end
+@inline function (::CplGradient{S})(point, locgrad, evalargs, arg) where S
+    subgrad = transpose(ForwardDiff.jacobian(x -> arg(x, locgrad, evalargs), point))
+    return SArray{Tuple{S...}}(subgrad)
+end
+pass_evalargs(::Type{<:CplGradient}) = true
+raw_args(::Type{<:CplGradient}) = (1,)
+
 struct CplInv end
 @inline (::CplInv)(arg) = inv(arg)
 
@@ -81,14 +89,14 @@ end
 pass_evalargs(::Type{<:CplElementIntegral}) = true
 raw_args(::Type{<:CplElementIntegral}) = (1,)
 
-struct CplMonomials{D,P,T} end
-@generated function (self::CplMonomials{D,P,T})(arg) where {D,P,T}
+struct CplMonomials{D,P,S} end
+@generated function (self::CplMonomials{D,P,S})(arg) where {D,P,S}
     exprs = [
         i <= P ? zero(eltype(arg)) : :(arg[$j] ^ $(i-P-1))
         for j in CartesianIndices(size(arg))
         for i in 1:(P+D+1)
     ]
-    :(@inbounds $T($(exprs...)))
+    :(@inbounds SArray{$(Tuple{S...})}($(exprs...)))
 end
 
 struct CplPermuteDims{I} end
@@ -125,8 +133,8 @@ struct CplSum{D,S} end
     :(@inbounds SArray{Tuple{$(S...)}}($(sums...)))
 end
 
-struct CplContract{I,Ti,T} end
-@generated function (self::CplContract{I,Ti,T})(args...) where {I,Ti,T}
+struct CplContract{I,Ti,S} end
+@generated function (self::CplContract{I,Ti,S})(args...) where {I,Ti,S}
     dims = _sizedict(args, I)
 
     # dim_order maps an axis label to an arbitrary one-based index
@@ -135,18 +143,18 @@ struct CplContract{I,Ti,T} end
     # getind(indmap, i) unpacks the indices in i corresponding to the index labels in indmap
     getind = (indmap, i) -> (i[dim_order[ax]] for ax in indmap)
 
-    sums = Vector{Expr}(undef, length(T))
+    sums = Vector{Expr}(undef, prod(S))
     for indices in product((1:n for n in values(dims))...)
         in_factors = map(enumerate(I)) do (i, ind)
             index = LinearIndices(size(args[i]))[getind(ind, indices)...]
             return :(args[$i][$index])
         end
         in_prod = :(*($(in_factors...)))
-        out_index = LinearIndices(size(T))[getind(Ti, indices)...]
+        out_index = LinearIndices(S)[getind(Ti, indices)...]
         sums[out_index] = isassigned(sums, out_index) ? :($(sums[out_index]) + $in_prod) : in_prod
     end
 
-    :(@inbounds $T($(sums...)))
+    :(@inbounds SArray{$(Tuple{S...})}($(sums...)))
 end
 
 

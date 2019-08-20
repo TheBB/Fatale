@@ -4,6 +4,7 @@ using Base: @_inline_meta
 using Base.Broadcast: broadcast_shape
 using Base.Iterators: flatten, product
 using DataStructures: OrderedDict
+using ForwardDiff
 using StaticArrays: MArray, SArray, Scalar, SOneTo, SUnitRange, SVector, SMatrix
 using ..Elements: AbstractElement, elementdata
 using ..Transforms: apply, isupdim
@@ -106,7 +107,6 @@ include("evaluables/arithmetic.jl")
 include("evaluables/contract.jl")
 
 include("evaluables/utility.jl")
-include("evaluables/gradients.jl")
 
 
 show(io::IO, self::Evaluable) = print(io, string(typeof(self).name.name), typerepr(self))

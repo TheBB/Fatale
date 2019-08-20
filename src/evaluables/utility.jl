@@ -154,19 +154,57 @@ norm_sqr(self::ArrayEvaluable) = dot(self, self)
 
 
 # ==============================================================================
+# Gradients
+
+# grad(::Evaluable, ::Int) represents the gradient of an evaluable
+# with respect to parametric coordinates. This is different from local
+# coordinates in that the local gradient is taken into account. This
+# is the presumed derivative of local coordinates with respect to
+# parametric coordiantes, which may be different from the identity if
+# updim transformations have been applied.
+
+function grad(self::LocalPoint, d::Int)
+    @assert (d,) == size(self)
+    LocalGrad(d, eltype(self))
+end
+
+function grad(self::LocalGrad, d::Int)
+    @assert (d,d) == size(self)
+    Zeros(eltype(self), d, size(self)...)
+end
+
+grad(self::Inflate, d::Int) = Inflate(grad(self.arg, d::Int), self.indices, self.newsize, self.axis + 1)
+grad(self::Evaluable, d::Int) = LocalGrad(d) * Gradient(self, d)
+
+"""
+    grad(::Evaluable, geom::Evaluable)
+
+Take the derivative of an evaluable with respect to a geometry. The
+latter must be a vector function with the appropriate number of
+degrees of freedom.
+"""
+function grad(self::Evaluable, geom::Evaluable)
+    @assert ndims(geom) == 1
+    dims = size(geom, 1)
+
+    # Calculate the gradients of both with respect to parametric
+    # coordinates (see above), and inverting the second, which is
+    # presumed small.
+    inv(grad(geom, dims)) * grad(self, dims)
+end
+
+
+# ==============================================================================
 # Convenience constructors
 
 local_transform() = ElementData{_Transform}(:loctrans)
 global_transform() = ElementData{_Transform}(:globtrans)
 element_index(n) = ElementData{_Array}(:index; eltype=Int, size=(n,))
 
-local_coords(n) = EvalArg{_Coords}(:coords; eltype=Float64, ndims=n)
 local_point(n) = LocalPoint(n)
 local_grad(n) = LocalGrad(n)
 
-global_coords(n) = ApplyTrans(global_transform(), local_coords(n))
-global_point(n) = ExtractCoords(global_coords(n))
-global_grad(n) = ExtractCoords(global_coords(n), 1)
+global_point(n) = ApplyTrans(global_transform(), local_point(n))
 
 function normal(geom)
     @assert ndims(geom) == 1
