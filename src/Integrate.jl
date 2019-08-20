@@ -52,8 +52,8 @@ function integrate(func::OptimizedEvaluable, domain, args::NamedTuple)
     for element in domain
         loctrans = elementdata(element, Val(:loctrans))
         for (pt, wt) in zip(pts, wts)
-            coords = apply(loctrans, (point=pt, grad=nothing))
-            data .+= func((element=element, coords=coords, args...)) .* wt
+            point, locgrad = apply(loctrans, (point=pt, grad=nothing))
+            data .+= func(point, locgrad, (element=element, args...)) .* wt
         end
     end
     data
@@ -78,9 +78,8 @@ function _integrate(block::OptimizedBlockEvaluable{1}, domain, args, V)
         _t, loctrans = splittrf(elementdata(element, Val(:loctrans)))
         @assert _t isa Empty
         for (pt, wt) in zip(pts, wts)
-            coords = apply(loctrans, (point=pt, grad=nothing))
-            point, locgrad = coords
-            V[I] .+= block.data(point, locgrad, (element=element, coords=coords, args...)) .* wt
+            point, locgrad = apply(loctrans, (point=pt, grad=nothing))
+            V[I] .+= block.data(point, locgrad, (element=element, args...)) .* wt
         end
     end
 end
@@ -119,9 +118,8 @@ function _integrate(block::OptimizedBlockEvaluable{2}, domain, args, I, J, V)
         _t, loctrans = splittrf(elementdata(element, Val(:loctrans)))
         @assert _t isa Empty
         for (pt, wt) in zip(pts, wts)
-            coords = apply(loctrans, (point=pt, grad=nothing))
-            point, locgrad = coords
-            V[:,:,i] .+= block.data(point, locgrad, (element=element, coords=coords, args...)) .* wt
+            point, locgrad = apply(loctrans, (point=pt, grad=nothing))
+            V[:,:,i] .+= block.data(point, locgrad, (element=element, args...)) .* wt
         end
     end
 end

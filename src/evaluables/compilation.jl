@@ -80,9 +80,8 @@ struct CplElementIntegral{T} end
     temp = zero(T)
     (pts, wts) = quadrule
     for (pt, wt) in zip(pts, wts)
-        coords = apply(loctrans, (point=pt, grad=nothing))
-        point, locgrad = coords
-        temp = temp .+ sub(point, locgrad, (args..., coords=coords)) .* wt
+        point, locgrad = apply(loctrans, (point=pt, grad=nothing))
+        temp = temp .+ sub(point, locgrad, args) .* wt
     end
     temp
 end
@@ -325,16 +324,13 @@ Evaluate an optimized evaluable with a collection of input arguments.
 The second call is equivalent to a minimal argument tuple with
 *element* and *coords* (the latter of which may be Nothing).
 """
-@inline function (self::OptimizedEvaluable)(element::Maybe{AbstractElement}, quadpt::Nothing)
-    self(nothing, nothing, (element=element, coords=(point=nothing, grad=nothing)))
-    # self((element=element, coords=(point=nothing, grad=nothing)))
-end
+@inline (self::OptimizedEvaluable)(element::Maybe{AbstractElement}, quadpt::Nothing) =
+    self(nothing, nothing, (element=element,))
 
 @inline function (self::OptimizedEvaluable)(element::AbstractElement, quadpt::SVector)
     trans = elementdata(element, Val{:loctrans}())
-    coords = apply(trans, (point=quadpt, grad=nothing))
-    point, locgrad = coords
-    self(point, locgrad, (element=element, coords=coords))
+    point, locgrad = apply(trans, (point=quadpt, grad=nothing))
+    self(point, locgrad, (element=element,))
 end
 
 @inline (self::OptimizedEvaluable)(point::Maybe{SVector}, locgrad::Maybe{SMatrix}, evalargs::NamedTuple) =
