@@ -21,7 +21,10 @@ struct CplElementData{T} end
 end
 
 struct CplApplyTrans end
-@inline (::CplApplyTrans)(trans, coords) = apply(trans, coords)
+@inline function (::CplApplyTrans)(trans, coords)
+    @assert !isupdim(trans)
+    apply(trans, coords)
+end
 
 struct CplConstant{T}
     val :: T

@@ -8,7 +8,7 @@ using ..Utils: newaxis
 
 import Base: ∘, eltype, length, getindex
 
-export AbstractTransform, todims, fromdims, apply
+export AbstractTransform, todims, fromdims, isupdim, apply
 export Empty, Affine
 export shift, updim
 
@@ -73,6 +73,20 @@ length(self::Chain) = length(self.chain)
 length(::Type{<:Chain{K}}) where K = length(K.parameters)
 @inline getindex(self::Chain, i::Int) = self.chain[i]
 
+@generated function splittrf(self::Chain{K}) where K
+    i = 1
+    while i <= length(self) && !isupdim(K.parameters[i])
+        i += 1
+    end
+    if i > length(self)
+        return :((self, Empty(self)))
+    elseif i == 1
+        return :((Empty(self), self))
+    else
+        return :((Chain(self.chain[1:$(i-1)]), Chain(self.chain[$i:end])))
+    end
+end
+
 @generated function (self::Chain)(x)
     codes = [:(x = self[$i](x)) for i in length(self):-1:1]
     quote
@@ -89,10 +103,13 @@ end
 A D-dimensional transform that does nothing.
 """
 struct Empty{D, R} <: AbstractTransform{D, D, R} end
+Empty(trf::T) where T<:AbstractTransform = Empty{todims(T), eltype(T)}()
 
 # Convenient but type-unstable constructors
 Empty(D, R) = Empty{D, R}()
 Empty(D) = Empty(D, Float64)
+
+splittrf(self::Empty) = (self, self)
 
 @inline (::Empty)(x) = x
 
@@ -109,6 +126,14 @@ struct Affine{F, T, R, L} <: AbstractTransform{F, T, R}
 
     function Affine(matrix::SMatrix{T, F, R}, vector::SVector{T, R}, flipped::Bool=false) where {T, F, R}
         new{F, T, R, F*T}(matrix, vector, flipped)
+    end
+end
+
+@generated function splittrf(self::Affine)
+    if isupdim(self)
+        return :((Empty(self), self))
+    else
+        return :((self, Empty(self)))
     end
 end
 

@@ -6,7 +6,7 @@ using Base.Iterators: isdone, Stateful, flatten, product, countfrom
 using DataStructures: OrderedDict
 using StaticArrays: MArray, SArray, Scalar, SOneTo, SUnitRange, SVector
 using ..Elements: elementdata
-using ..Transforms: apply
+using ..Transforms: apply, isupdim, splittrf
 using ..Utils: MemoizedMap
 
 import Base: eltype, size, ndims, length, map, firstindex, lastindex, show
