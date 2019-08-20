@@ -7,7 +7,7 @@ using Strided: UnsafeStridedView, sreshape, StridedView
 using ..Elements: elementdata
 using ..Evaluables: OptimizedEvaluable, OptimizedBlockEvaluable, OptimizedSparseEvaluable
 using ..Evaluables: ArrayEvaluable, optimize
-using ..Transforms: apply
+using ..Transforms: Empty, apply, splittrf
 
 export integrate, to
 
@@ -75,7 +75,8 @@ function _integrate(block::OptimizedBlockEvaluable{1}, domain, args, V)
     (pts, wts) = args.quadrule
     for (i, element) in enumerate(domain)
         I = block.indices[1](element, nothing)
-        loctrans = elementdata(element, Val(:loctrans))
+        _t, loctrans = splittrf(elementdata(element, Val(:loctrans)))
+        @assert _t isa Empty
         for (pt, wt) in zip(pts, wts)
             coords = apply(loctrans, (point=pt, grad=nothing))
             V[I] .+= block.data((element=element, coords=coords, args...)) .* wt
@@ -114,7 +115,8 @@ function _integrate(block::OptimizedBlockEvaluable{2}, domain, args, I, J, V)
     for (i, element) in enumerate(domain)
         I[:,:,i] .= block.indices[1](element, nothing)
         J[:,:,i] .= block.indices[2](element, nothing)
-        loctrans = elementdata(element, Val(:loctrans))
+        _t, loctrans = splittrf(elementdata(element, Val(:loctrans)))
+        @assert _t isa Empty
         for (pt, wt) in zip(pts, wts)
             coords = apply(loctrans, (point=pt, grad=nothing))
             V[:,:,i] .+= block.data((element=element, coords=coords, args...)) .* wt
