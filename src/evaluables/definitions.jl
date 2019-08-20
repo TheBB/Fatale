@@ -96,6 +96,23 @@ codegen(self::GetIndex) = CplGetIndex()
 
 
 """
+    Gradient(arg)
+
+Take the gradient of `arg` with respect to input parameters.
+"""
+struct Gradient <: ArrayEvaluable
+    arg :: ArrayEvaluable
+    d :: Int
+end
+
+arguments(self::Gradient) = Evaluable[self.arg]
+size(self::Gradient) = (self.d, size(self.arg)...)
+eltype(self::Gradient) = eltype(self.arg)
+
+codegen(self::Gradient) = CplGradient{size(self)}()
+
+
+"""
     Inv(arg)
 
 An evaluable that computes the inverse of the two-dimensional argument
@@ -140,7 +157,7 @@ Monomials(arg, degree) = Monomials(arg, degree, 0)
 arguments(self::Monomials) = Evaluable[self.arg]
 size(self::Monomials) = (self.padding + self.degree + 1, size(self.arg)...)
 
-codegen(self::Monomials) = CplMonomials{self.degree, self.padding, sarray(self)}()
+codegen(self::Monomials) = CplMonomials{self.degree, self.padding, size(self)}()
 
 
 """

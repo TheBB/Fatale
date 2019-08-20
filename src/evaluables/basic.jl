@@ -109,13 +109,13 @@ codegen(self::ExtractCoords) = CplGetIndex{self.stage+1}()
 
 Apply the transformation *trans* to *coords*.
 """
-struct ApplyTrans <: CoordsEvaluable
+struct ApplyTrans <: ArrayEvaluable
     transform :: Evaluable{_Transform}
-    coords :: CoordsEvaluable
+    coords :: ArrayEvaluable
 end
 
 eltype(self::ApplyTrans) = eltype(self.coords)
-ndims(self::ApplyTrans) = ndims(self.coords)
+size(self::ApplyTrans) = size(self.coords)
 arguments(self::ApplyTrans) = Evaluable[self.transform, self.coords]
 
 codegen(self::ApplyTrans) = CplApplyTrans()
