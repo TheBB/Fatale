@@ -23,7 +23,6 @@ export Contract, Constant, ElementIntegral, Inflate, Monomials, Zeros
 
 
 abstract type Result end
-struct _Coords <: Result end
 struct _Array <: Result end
 struct _Element <: Result end
 struct _Transform <: Result end
@@ -59,7 +58,6 @@ end
 
 # Some type aliases that will be useful
 const ArrayEvaluable = Evaluable{_Array}
-const CoordsEvaluable = Evaluable{_Coords}
 const VarTuple{K} = Tuple{Vararg{K}}
 const Maybe{K} = Union{K, Nothing}
 
@@ -73,10 +71,6 @@ firstindex(self::ArrayEvaluable) = ntuple(_->1, ndims(self))
 firstindex(::ArrayEvaluable, i) = 1
 lastindex(self::ArrayEvaluable) = size(self)
 lastindex(self::ArrayEvaluable, i) = size(self, i)
-
-
-eltype(::CoordsEvaluable) = throw("not implemented")
-ndims(::CoordsEvaluable) = throw("not implemented")
 
 
 # Supertype for all evaluables with constant value
@@ -113,7 +107,6 @@ show(io::IO, self::Evaluable) = print(io, string(typeof(self).name.name), typere
 
 typerepr(self::Evaluable) = ""
 typerepr(self::ArrayEvaluable) = string("<", join(size(self), ","), ">")
-typerepr(self::CoordsEvaluable) = let n = ndims(self); "(point=<$n>, grad=<$n,$n>)" end
 typerepr(self::Evaluable{_Element}) = "(Element)"
 typerepr(self::Evaluable{_Transform}) = "(Transform)"
 

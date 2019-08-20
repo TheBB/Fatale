@@ -2,18 +2,15 @@
 # collecting evaluation arguments, element data, etc.
 
 
-# Helper struct for allowing some evaluables to respond to different interfaces
-# without multiple subtypes
+# Helper struct for allowing some evaluables to respond to array interface
 struct Mimic
     eltype :: Union{Nothing, DataType}
     size :: Union{Nothing, Dims}
-    ndims :: Union{Nothing, Int}
 
-    function Mimic(T; size=nothing, eltype=nothing, ndims=nothing)
-        T <: _Coords && @assert ndims isa Int
+    function Mimic(T; size=nothing, eltype=nothing)
         T <: _Array && @assert size isa Dims
-        T <: Union{_Coords,_Array} && @assert eltype isa DataType
-        new(eltype, size, ndims)
+        T <: _Array && @assert eltype isa Type
+        new(eltype, size)
     end
 end
 
@@ -22,8 +19,7 @@ end
 abstract type ShapeShifter{T} <: Evaluable{T} end
 
 size(self::ShapeShifter{_Array}) = self.mimic.size
-ndims(self::ShapeShifter{_Coords}) = self.mimic.ndims
-eltype(self::ShapeShifter{<:Union{_Array,_Coords}}) = self.mimic.eltype
+eltype(self::ShapeShifter{_Array}) = self.mimic.eltype
 
 
 """
@@ -83,25 +79,6 @@ end
 
 arguments(self::ElementData) = Evaluable[EvalArg{_Element}(:element)]
 codegen(self::ElementData) = CplElementData{self.name}()
-
-
-"""
-    ExtractCoords(coords[, stage])
-
-Extract the derivative at level `stage` from `coords`. Here, stage
-zero corresponds to the point, stage one corresponds to the
-derivative, etc.
-"""
-struct ExtractCoords <: ArrayEvaluable
-    arg :: CoordsEvaluable
-    stage :: Int
-end
-
-ExtractCoords(arg::CoordsEvaluable) = ExtractCoords(arg, 0)
-
-arguments(self::ExtractCoords) = Evaluable[self.arg]
-size(self::ExtractCoords) = ntuple(_->ndims(self.arg), self.stage+1)
-codegen(self::ExtractCoords) = CplGetIndex{self.stage+1}()
 
 
 """
