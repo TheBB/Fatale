@@ -161,8 +161,8 @@ global_transform() = ElementData{_Transform}(:globtrans)
 element_index(n) = ElementData{_Array}(:index; eltype=Int, size=(n,))
 
 local_coords(n) = EvalArg{_Coords}(:coords; eltype=Float64, ndims=n)
-local_point(n) = ExtractCoords(local_coords(n))
-local_grad(n) = ExtractCoords(local_coords(n), 1)
+local_point(n) = LocalPoint(n)
+local_grad(n) = LocalGrad(n)
 
 global_coords(n) = ApplyTrans(global_transform(), local_coords(n))
 global_point(n) = ExtractCoords(global_coords(n))

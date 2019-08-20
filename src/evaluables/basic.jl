@@ -27,6 +27,36 @@ eltype(self::ShapeShifter{<:Union{_Array,_Coords}}) = self.mimic.eltype
 
 
 """
+    LocalPoint
+
+Return the local quadrature point.
+"""
+struct LocalPoint <: ShapeShifter{_Array}
+    mimic :: Mimic
+    LocalPoint(n::Int, t::Type) = new(Mimic(_Array; size=(n,), eltype=t))
+end
+
+LocalPoint(n) = LocalPoint(n, Float64)
+
+codegen(self::LocalPoint) = CplRawArg{1}()
+
+
+"""
+    LocalGrad
+
+Return the local gradient.
+"""
+struct LocalGrad <: ShapeShifter{_Array}
+    mimic :: Mimic
+    LocalGrad(n::Int, t::Type) = new(Mimic(_Array; size=(n,n), eltype=t))
+end
+
+LocalGrad(n) = LocalGrad(n, Float64)
+
+codegen(self::LocalGrad) = CplRawArg{2}()
+
+
+"""
     EvalArg{T}(name; kwargs...)
 
 Returns the evaluation argument named `name`.
