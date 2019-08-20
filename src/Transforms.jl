@@ -40,10 +40,12 @@ abstract type AbstractTransform{From, To, R<:Real} end
 @inline fromdims(::Type{<:AbstractTransform{F}}) where F = F
 @inline todims(::Type{<:AbstractTransform{_F, T}}) where {_F, T} = T
 @inline eltype(::Type{<:AbstractTransform{_F, _T, R}}) where {_F, _T, R} = R
+@inline isupdim(::Type{T}) where T<:AbstractTransform = fromdims(T) != todims(T)
 
 @inline fromdims(t::T) where T<:AbstractTransform = fromdims(T)
 @inline todims(t::T) where T<:AbstractTransform = todims(T)
 @inline eltype(t::T) where T<:AbstractTransform = eltype(T)
+@inline isupdim(t::T) where T<:AbstractTransform = isupdim(T)
 
 # This is a workaround until we can define functions on abstract types
 # Mostly just to convert a nothing gradient into the identity matrix
@@ -171,10 +173,18 @@ end
 
 
 # Transform composition rules
-@inline compose(l::AbstractTransform, r::AbstractTransform) = Chain((l, r))
+@inline function compose(l::AbstractTransform, r::AbstractTransform)
+    isupdim(l) && @assert isupdim(r)
+    return _compose(l, r)
+end
 @inline compose(l::Empty, r::AbstractTransform) = r
 @inline compose(l::AbstractTransform, r::Empty) = l
 @inline compose(l::Empty, r::Empty) = l
+
+@inline _compose(l::AbstractTransform, r::AbstractTransform) = Chain((l, r))
+@inline _compose(l::Chain, r::AbstractTransform) = Chain((l.chain..., r))
+@inline _compose(l::AbstractTransform, r::Chain) = Chain((l, r.chain...))
+@inline _compose(l::Chain, r::Chain) = Chain((l.chain..., r.chain...))
 
 # This is basically reduce(compose, trfs), except type stable
 @generated function ∘(trfs::AbstractTransform...)
