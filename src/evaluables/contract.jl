@@ -19,7 +19,7 @@ struct Contract <: ArrayEvaluable
         @assert length(args) == length(indices)
         @assert all(ndims(arg) == length(ind) for (arg, ind) in zip(args, indices))
 
-        dims = _sizedict(args, indices)
+        dims = Cpl.contract_sizedict(args, indices)
         for (arg, ind) in zip(args, indices)
             @assert all(size(arg, i) == dims[ind[i]] for i in 1:ndims(arg))
         end
@@ -90,14 +90,8 @@ function _collapse_constants!(contract, j)
     contract
 end
 
-# A dictionary mapping axis IDs to sizes
-_sizedict(args, inds) = OrderedDict(flatten(
-    (k => v for (k, v) in zip(ind, size(arg)))
-    for (arg, ind) in zip(args, inds)
-))
-
 # Compute the expected size of a contraction
-_contract_size(args, indices, target) = let dims = _sizedict(args, indices)
+_contract_size(args, indices, target) = let dims = Cpl.contract_sizedict(args, indices)
     Tuple(dims[i] for i in target)
 end
 
