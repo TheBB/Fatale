@@ -1,163 +1,4 @@
 # ==============================================================================
-# Compilation blocks
-
-# True if evalargs should be passed
-pass_evalargs(::Type{<:Any}) = false
-
-# Tuple of argument indices that should be passed in raw form
-raw_args(::Type{<:Any}) = ()
-
-struct CplRawArg{N} end
-@inline (::CplRawArg{N})(args...) where N = args[N]
-pass_evalargs(::Type{<:CplRawArg}) = true
-
-struct CplEvalArg{T} end
-@generated (::CplEvalArg{T})(_, _, evalargs) where T = quote
-    @_inline_meta
-    evalargs.$T
-end
-pass_evalargs(::Type{<:CplEvalArg}) = true
-
-struct CplElementData{T} end
-@generated (::CplElementData{T})(element) where T = quote
-    @_inline_meta
-    elementdata(element, Val(:($T)))
-end
-
-struct CplApplyTrans end
-@inline function (::CplApplyTrans)(trans, coords)
-    @assert !isupdim(trans)
-    apply(trans, coords)
-end
-
-struct CplConstant{T}
-    val :: T
-end
-@inline (self::CplConstant)() = self.val
-
-struct CplGetIndex{T} end
-(::Type{CplGetIndex})() = CplGetIndex{Nothing}()
-@inline (::CplGetIndex{Nothing})(arg, indices...) = @inbounds arg[indices...]
-@inline (::CplGetIndex{T})(arg) where T = @inbounds arg[T]
-
-struct CplGradient{S} end
-@inline function (::CplGradient{S})(point, locgrad, evalargs, arg) where S
-    subgrad = transpose(ForwardDiff.jacobian(x -> arg(x, locgrad, evalargs), point))
-    return SArray{Tuple{S...}}(subgrad)
-end
-pass_evalargs(::Type{<:CplGradient}) = true
-raw_args(::Type{<:CplGradient}) = (1,)
-
-struct CplInv end
-@inline (::CplInv)(arg) = inv(arg)
-
-struct CplNegate end
-@inline (::CplNegate)(arg) = -arg
-
-struct CplPower{P} end
-@inline (::CplPower{P})(arg::Scalar) where P = Scalar(arg[] ^ P) # Remove when StaticArrays bug fixed
-@inline (::CplPower{P})(arg) where P = arg .^ P
-
-struct CplReciprocal end
-@inline (::CplReciprocal)(arg::Scalar) = Scalar(one(eltype(arg)) / arg[]) # Remove when StaticArrays bug fixed
-@inline (::CplReciprocal)(arg) = one(eltype(arg)) ./ arg
-
-struct CplReshape{S} end
-@inline (::CplReshape{S})(arg) where S = SArray{Tuple{S...}}(arg)
-
-struct CplSqrt end
-@inline (::CplSqrt)(arg::Scalar) = Scalar(sqrt(arg[])) # Remove when StaticArrays bug fixed
-@inline (::CplSqrt)(arg) = sqrt.(arg)
-
-struct CplCommArith{F} end
-@generated (::CplCommArith{F})(args...) where F = quote
-    @_inline_meta
-    $F(args...)
-end
-
-struct CplElementIntegral{T} end
-@inline function (self::CplElementIntegral{T})(_, _, args, sub, loctrans, quadrule) where T
-    temp = zero(T)
-    (pts, wts) = quadrule
-    for (pt, wt) in zip(pts, wts)
-        point, locgrad = apply(loctrans, (point=pt, grad=nothing))
-        temp = temp .+ sub(point, locgrad, args) .* wt
-    end
-    temp
-end
-pass_evalargs(::Type{<:CplElementIntegral}) = true
-raw_args(::Type{<:CplElementIntegral}) = (1,)
-
-struct CplMonomials{D,P,S} end
-@generated function (self::CplMonomials{D,P,S})(arg) where {D,P,S}
-    exprs = [
-        i <= P ? zero(eltype(arg)) : :(arg[$j] ^ $(i-P-1))
-        for j in CartesianIndices(size(arg))
-        for i in 1:(P+D+1)
-    ]
-    :(@inbounds SArray{$(Tuple{S...})}($(exprs...)))
-end
-
-struct CplPermuteDims{I} end
-@generated function (::CplPermuteDims{I})(arg) where I
-    insize = size(arg)
-    outsize = Tuple(size(arg, i) for i in I)
-
-    lininds = LinearIndices(insize)
-    indices = (lininds[(cind[i] for i in I)...] for cind in CartesianIndices(outsize))
-    exprs = (:(arg[$i]) for i in indices)
-    quote
-        @_inline_meta
-        SArray{Tuple{$(outsize...)}}($(exprs...))
-    end
-end
-
-struct CplSum{D,S} end
-@generated function (self::CplSum{D,S})(arg) where {D,S}
-    D = collect(D)
-    tempsize = Tuple(i in D ? 1 : k for (i, k) in enumerate(size(arg)))
-    indexer = LinearIndices(size(arg))
-
-    out_indices = product((1:k for k in tempsize)...)
-    sums = map(out_indices) do out_ind
-        in_ind = collect(out_ind)
-        sum_indices = product((1:size(arg, d) for d in D)...)
-        exprs = map(sum_indices) do sum_ind
-            in_ind[D] = collect(sum_ind)
-            return :(arg[$(indexer[in_ind...])])
-        end
-        return :(+($(exprs...)))
-    end
-
-    :(@inbounds SArray{Tuple{$(S...)}}($(sums...)))
-end
-
-struct CplContract{I,Ti,S} end
-@generated function (self::CplContract{I,Ti,S})(args...) where {I,Ti,S}
-    dims = _sizedict(args, I)
-
-    # dim_order maps an axis label to an arbitrary one-based index
-    dim_order = Dict(axis => num for (num, axis) in enumerate(keys(dims)))
-
-    # getind(indmap, i) unpacks the indices in i corresponding to the index labels in indmap
-    getind = (indmap, i) -> (i[dim_order[ax]] for ax in indmap)
-
-    sums = Vector{Expr}(undef, prod(S))
-    for indices in product((1:n for n in values(dims))...)
-        in_factors = map(enumerate(I)) do (i, ind)
-            index = LinearIndices(size(args[i]))[getind(ind, indices)...]
-            return :(args[$i][$index])
-        end
-        in_prod = :(*($(in_factors...)))
-        out_index = LinearIndices(S)[getind(Ti, indices)...]
-        sums[out_index] = isassigned(sums, out_index) ? :($(sums[out_index]) + $in_prod) : in_prod
-    end
-
-    :(@inbounds SArray{$(Tuple{S...})}($(sums...)))
-end
-
-
-# ==============================================================================
 # Linearization
 
 # Internal structure for a single stage in a linearized evaluation sequence
@@ -222,11 +63,11 @@ result of the full evaluation sequence if not given.
         args = Union{Expr,Symbol}[syms[dep] for dep in I[tgt]]
 
         blocktype = K.parameters[tgt]
-        for idx in raw_args(blocktype)
+        for idx in Cpl.raw_args(blocktype)
             args[idx] = :(TargetedEvalSeq(self, Val($(I[tgt][idx]))))
         end
 
-        if pass_evalargs(blocktype)
+        if Cpl.pass_evalargs(blocktype)
             pushfirst!(args, :evalargs)
             pushfirst!(args, :locgrad)
             pushfirst!(args, :point)
@@ -258,7 +99,7 @@ end
 function _sequence!(ret, I, tgt, functypes)
     push!(ret, tgt)
     for (idx, dep) in enumerate(I[tgt])
-        idx in raw_args(functypes[tgt]) && continue
+        idx in Cpl.raw_args(functypes[tgt]) && continue
         _sequence!(ret, I, dep, functypes)
     end
 end

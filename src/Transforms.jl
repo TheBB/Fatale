@@ -1,7 +1,7 @@
 module Transforms
 
 using Base: @_inline_meta
-using Base.Iterators: flatten, product
+using Base.Iterators: product
 using StaticArrays: SVector, SMatrix
 using LinearAlgebra: I
 using ..Utils: newaxis

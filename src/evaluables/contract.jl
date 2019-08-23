@@ -34,20 +34,20 @@ size(self::Contract) = _contract_size(self.args, self.indices, self.target)
 function codegen(self::Contract)
     inds = Tuple(map(Tuple, self.indices))
     target = Tuple(self.target)
-    CplContract{inds, target, size(self)}()
+    Cpl.Contract{inds, target, size(self)}()
 end
 
 
 # Apply a contraction at 'compile time'
 function _do_contract(left, right, l, r, t)
     newsize = _contract_size([left, right], [l, r], t)
-    func = CplContract{(Tuple(l), Tuple(r)), Tuple(t), newsize}()
+    func = Cpl.Contract{(Tuple(l), Tuple(r)), Tuple(t), newsize}()
     func(left, right)
 end
 
 function _do_contract(left, l, t)
     newsize = _contract_size([left], [l], t)
-    func = CplContract{(Tuple(l),), Tuple(t), newsize}()
+    func = Cpl.Contract{(Tuple(l),), Tuple(t), newsize}()
     func(left)
 end
 

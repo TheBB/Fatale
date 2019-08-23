@@ -51,7 +51,7 @@ eltype(self::ElementIntegral) = let t = eltype(self.arg)
     t <: Integer ? Float64 : t
 end
 
-codegen(self::ElementIntegral) = CplElementIntegral{sarray(self)}()
+codegen(self::ElementIntegral) = Cpl.ElementIntegral{sarray(self)}()
 
 
 """
@@ -92,7 +92,7 @@ function size(self::GetIndex)
     Tuple(ret)
 end
 
-codegen(self::GetIndex) = CplGetIndex()
+codegen(self::GetIndex) = Cpl.GetIndex()
 
 
 """
@@ -109,7 +109,7 @@ arguments(self::Gradient) = Evaluable[self.arg]
 size(self::Gradient) = (self.d, size(self.arg)...)
 eltype(self::Gradient) = eltype(self.arg)
 
-codegen(self::Gradient) = CplGradient{size(self)}()
+codegen(self::Gradient) = Cpl.Gradient{size(self)}()
 
 
 """
@@ -135,7 +135,7 @@ eltype(self::Inv) = let t = eltype(self.arg)
     t <: Integer ? Float64 : t
 end
 
-codegen(self::Inv) = CplInv()
+codegen(self::Inv) = Cpl.Inv()
 
 
 """
@@ -157,7 +157,7 @@ Monomials(arg, degree) = Monomials(arg, degree, 0)
 arguments(self::Monomials) = Evaluable[self.arg]
 size(self::Monomials) = (self.padding + self.degree + 1, size(self.arg)...)
 
-codegen(self::Monomials) = CplMonomials{self.degree, self.padding, size(self)}()
+codegen(self::Monomials) = Cpl.Monomials{self.degree, self.padding, size(self)}()
 
 
 """
@@ -172,7 +172,7 @@ end
 arguments(self::Negate) = Evaluable[self.arg]
 size(self::Negate) = size(self.arg)
 
-codegen(self::Negate) = CplNegate()
+codegen(self::Negate) = Cpl.Negate()
 
 
 """
@@ -194,7 +194,7 @@ end
 arguments(self::PermuteDims) = Evaluable[self.arg]
 size(self::PermuteDims) = Tuple(size(self.arg, i) for i in self.perm)
 
-codegen(self::PermuteDims) = CplPermuteDims{self.perm}()
+codegen(self::PermuteDims) = Cpl.PermuteDims{self.perm}()
 
 
 """
@@ -218,7 +218,7 @@ end
 arguments(self::Power) = Evaluable[self.arg]
 size(self::Power) = size(self.arg)
 
-codegen(self::Power) = CplPower{self.exp}()
+codegen(self::Power) = Cpl.Power{self.exp}()
 
 
 """
@@ -236,7 +236,7 @@ eltype(self::Reciprocal) = let t = eltype(self.arg)
     t <: Integer ? Float64 : t
 end
 
-codegen(self::Reciprocal) = CplReciprocal()
+codegen(self::Reciprocal) = Cpl.Reciprocal()
 
 
 """
@@ -253,7 +253,7 @@ end
 arguments(self::Reshape) = Evaluable[self.arg]
 size(self::Reshape) = self.shape
 
-codegen(self::Reshape) = CplReshape{size(self)}()
+codegen(self::Reshape) = Cpl.Reshape{size(self)}()
 
 
 """
@@ -268,7 +268,7 @@ end
 arguments(self::Sqrt) = Evaluable[self.arg]
 size(self::Sqrt) = size(self.arg)
 
-codegen(self::Sqrt) = CplSqrt()
+codegen(self::Sqrt) = Cpl.Sqrt()
 
 
 """
@@ -300,4 +300,4 @@ function size(self::Sum)
     end
 end
 
-codegen(self::Sum) = CplSum{self.dims, size(self)}()
+codegen(self::Sum) = Cpl.Sum{self.dims, size(self)}()

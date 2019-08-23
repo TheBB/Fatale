@@ -1,13 +1,11 @@
 module Evaluables
 
-using Base: @_inline_meta
 using Base.Broadcast: broadcast_shape
-using Base.Iterators: flatten, product
+using Base.Iterators: flatten
 using DataStructures: OrderedDict
-using ForwardDiff
 using StaticArrays: MArray, SArray, Scalar, SOneTo, SUnitRange, SVector, SMatrix
 using ..Elements: AbstractElement, elementdata
-using ..Transforms: apply, isupdim
+using ..Transforms: apply
 using ..Utils: MemoizedMap
 
 import Base: eltype, size, ndims, length, map, firstindex, lastindex, show
@@ -76,7 +74,7 @@ lastindex(self::ArrayEvaluable, i) = size(self, i)
 # Supertype for all evaluables with constant value
 abstract type AbstractConstant <: ArrayEvaluable end
 valueof(::AbstractConstant) = throw("not implemented")
-codegen(self::AbstractConstant) = CplConstant(valueof(self))
+codegen(self::AbstractConstant) = Cpl.Constant(valueof(self))
 
 
 """
@@ -91,6 +89,9 @@ blocks(self::ArrayEvaluable) = [(
     data = self,
 )]
 
+
+include("evaluables/compilation_blocks.jl")
+const Cpl = CompilationBlocks
 
 include("evaluables/compilation.jl")
 

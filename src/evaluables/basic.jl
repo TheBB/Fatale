@@ -34,7 +34,7 @@ end
 
 LocalPoint(n) = LocalPoint(n, Float64)
 
-codegen(self::LocalPoint) = CplRawArg{1}()
+codegen(self::LocalPoint) = Cpl.RawArg{1}()
 
 
 """
@@ -49,7 +49,7 @@ end
 
 LocalGrad(n) = LocalGrad(n, Float64)
 
-codegen(self::LocalGrad) = CplRawArg{2}()
+codegen(self::LocalGrad) = Cpl.RawArg{2}()
 
 
 """
@@ -63,7 +63,7 @@ struct EvalArg{T} <: ShapeShifter{T}
     EvalArg{T}(name; kwargs...) where T = new{T}(name, Mimic(T; kwargs...))
 end
 
-codegen(self::EvalArg) = CplEvalArg{self.name}()
+codegen(self::EvalArg) = Cpl.EvalArg{self.name}()
 
 
 """
@@ -78,7 +78,7 @@ struct ElementData{T} <: ShapeShifter{T}
 end
 
 arguments(self::ElementData) = Evaluable[EvalArg{_Element}(:element)]
-codegen(self::ElementData) = CplElementData{self.name}()
+codegen(self::ElementData) = Cpl.ElementData{self.name}()
 
 
 """
@@ -95,4 +95,4 @@ eltype(self::ApplyTrans) = eltype(self.coords)
 size(self::ApplyTrans) = size(self.coords)
 arguments(self::ApplyTrans) = Evaluable[self.transform, self.coords]
 
-codegen(self::ApplyTrans) = CplApplyTrans()
+codegen(self::ApplyTrans) = Cpl.ApplyTrans()
