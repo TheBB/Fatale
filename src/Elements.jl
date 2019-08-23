@@ -1,6 +1,5 @@
 module Elements
 
-using Base: @_inline_meta
 using Base.Iterators: product
 using FastGaussQuadrature: gausslegendre
 using StaticArrays: SVector

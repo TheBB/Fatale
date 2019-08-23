@@ -106,7 +106,7 @@ end
 
 Add(args...) = CommArith(Add, args...)
 _compute(::Type{Add}, left, right) = left .+ right
-codegen(self::Add) = CplCommArith{:.+}()
+codegen(self::Add) = Cpl.CommArith{:.+}()
 
 function Add(left::Zeros, right::ArrayEvaluable)
     # TODO: Add a promote_type evaluable
@@ -133,7 +133,7 @@ end
 
 Multiply(args...) = CommArith(Multiply, args...)
 _compute(::Type{Multiply}, left, right) = left .* right
-codegen(self::Multiply) = CplCommArith{:.*}()
+codegen(self::Multiply) = Cpl.CommArith{:.*}()
 
 function Multiply(left::Zeros, right::ArrayEvaluable)
     newsize = broadcast_shape(size(left), size(right))
