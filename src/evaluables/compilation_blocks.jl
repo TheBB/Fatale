@@ -1,13 +1,13 @@
 module CompilationBlocks
 
 using Base: @_inline_meta
-using Base.Iterators: product
+using Base.Iterators: product, flatten
+using DataStructures: OrderedDict
 using ForwardDiff: jacobian
 using StaticArrays: SArray, Scalar
 
 using ...Elements: elementdata
 using ...Transforms: apply, isupdim
-import ..Evaluables             # for access to some helpers
 
 
 abstract type CompilationBlock end
@@ -156,7 +156,7 @@ end
 
 struct Contract{I,Ti,S} <: CompilationBlock end
 @generated function (self::Contract{I,Ti,S})(args...) where {I,Ti,S}
-    dims = Evaluables._sizedict(args, I)
+    dims = contract_sizedict(args, I)
 
     # dim_order maps an axis label to an arbitrary one-based index
     dim_order = Dict(axis => num for (num, axis) in enumerate(keys(dims)))
@@ -177,5 +177,11 @@ struct Contract{I,Ti,S} <: CompilationBlock end
 
     :(@inbounds SArray{$(Tuple{S...})}($(sums...)))
 end
+
+# A dictionary mapping axis IDs to sizes
+contract_sizedict(args, inds) = OrderedDict(flatten(
+    (k => v for (k, v) in zip(ind, size(arg)))
+    for (arg, ind) in zip(args, inds)
+))
 
 end # module
