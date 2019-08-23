@@ -73,7 +73,7 @@ lastindex(self::ArrayEvaluable, i) = size(self, i)
 
 # Supertype for all evaluables with constant value
 abstract type AbstractConstant <: ArrayEvaluable end
-valueof(::AbstractConstant) = throw("not implemented")
+valueof(::T) where T<:AbstractConstant = throw("valueof not implemented for type $T")
 codegen(self::AbstractConstant) = Cpl.Constant(valueof(self))
 
 

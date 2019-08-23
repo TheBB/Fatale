@@ -27,7 +27,7 @@ Base.ndims(::ReferenceElement{D}) where D = D
 
 Generate a quadrature rule for a reference element.
 """
-quadrule(::ReferenceElement, args...) = throw("not implemented")
+function quadrule end
 
 
 """
@@ -106,7 +106,7 @@ Base.ndims(::AbstractElement{D}) where D = D
 
 Obtain a reference element for a given element type.
 """
-reference(::Type{<:AbstractElement}) = throw("not implemented")
+function reference end
 
 
 """
@@ -127,7 +127,7 @@ to implement the functions
 - Fatale.Elements.globtrans
 - Fatale.Elements.index
 """
-elementdata(::AbstractElement, ::Val, args...) = throw("not implemented")
+function elementdata end
 
 # Easier interfaces for the standard names
 @inline elementdata(el::AbstractElement, ::Val{:loctrans}) = loctrans(el)
@@ -136,8 +136,8 @@ elementdata(::AbstractElement, ::Val, args...) = throw("not implemented")
 
 # Standard implementations
 @inline loctrans(::AbstractElement{D}) where D = Empty{D,Float64}()
-@inline globtrans(::AbstractElement) = throw("not implemented")
-@inline index(::AbstractElement) = throw("not implemented")
+@inline globtrans(::T) where T<:AbstractElement = error("globtrans not implemented for type $T")
+@inline index(::T) where T<:AbstractElement = error("index not implemented for type $T")
 
 
 """
@@ -159,7 +159,7 @@ abstract type AbstractSubElement{D,P} <: AbstractElement{D} end
 
 Return the parent element of a given sub-element.
 """
-parent(::AbstractSubElement) = throw("not implemented")
+function parent end
 
 @inline loctrans(self::AbstractSubElement) = loctrans(parent(self)) ∘ subtrans(self)
 @inline globtrans(self::AbstractSubElement) = globtrans(parent(self))
