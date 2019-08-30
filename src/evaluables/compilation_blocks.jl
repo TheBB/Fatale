@@ -13,32 +13,24 @@ using ...Transforms: apply, isupdim
 abstract type CompilationBlock end
 
 """
-    pass_evalargs(::Type{<:CompilationBlock})
+    argspec(::Type{<:CompilationBlock})
 
-Return true if the compilation block should have raw access to the
-evaluation arguments, in addition to just its own arguments.
+Specify which special arguments should be passed, in which order,
+before the natural arguments.
 """
-pass_evalargs(::Type{<:CompilationBlock}) = false
-
-"""
-    raw_args(::Type{<:CompilationBlock})
-
-Return the indices of the arguments that should be passed in 'raw'
-form (as evaluables) as opposed to just their outputs.
-"""
-raw_args(::Type{<:CompilationBlock}) = ()
+argspec(::Type{<:CompilationBlock}) = ()
 
 
 struct RawArg{N} <: CompilationBlock end
+argspec(::Type{<:RawArg}) = (:point, :locgrad, :evalargs)
 @inline (::RawArg{N})(args...) where N = args[N]
-pass_evalargs(::Type{<:RawArg}) = true
 
 struct EvalArg{T} <: CompilationBlock end
-@generated (::EvalArg{T})(_, _, evalargs) where T = quote
+argspec(::Type{<:EvalArg}) = (:evalargs,)
+@generated (::EvalArg{T})(evalargs) where T = quote
     @_inline_meta
     evalargs.$T
 end
-pass_evalargs(::Type{<:EvalArg}) = true
 
 struct ElementData{T} <: CompilationBlock end
 @generated (::ElementData{T})(element) where T = quote
@@ -63,12 +55,11 @@ struct GetIndex{T} <: CompilationBlock end
 @inline (::GetIndex{T})(arg) where T = @inbounds arg[T]
 
 struct Gradient{S} <: CompilationBlock end
+argspec(::Type{<:Gradient}) = (:point, :locgrad, :evalargs, :rawarg)
 @inline function (::Gradient{S})(point, locgrad, evalargs, arg) where S
     subgrad = transpose(jacobian(x -> arg(x, locgrad, evalargs), point))
     return SArray{Tuple{S...}}(subgrad)
 end
-pass_evalargs(::Type{<:Gradient}) = true
-raw_args(::Type{<:Gradient}) = (1,)
 
 struct Inv <: CompilationBlock end
 @inline (::Inv)(arg) = inv(arg)
@@ -98,7 +89,8 @@ struct CommArith{F} <: CompilationBlock end
 end
 
 struct ElementIntegral{T} <: CompilationBlock end
-@inline function (self::ElementIntegral{T})(_, _, args, sub, loctrans, quadrule) where T
+argspec(::Type{<:ElementIntegral}) = (:evalargs, :rawarg)
+@inline function (self::ElementIntegral{T})(args, sub, loctrans, quadrule) where T
     temp = zero(T)
     (pts, wts) = quadrule
     for (pt, wt) in zip(pts, wts)
@@ -107,8 +99,6 @@ struct ElementIntegral{T} <: CompilationBlock end
     end
     temp
 end
-pass_evalargs(::Type{<:ElementIntegral}) = true
-raw_args(::Type{<:ElementIntegral}) = (1,)
 
 struct Monomials{D,P,S} <: CompilationBlock end
 @generated function (self::Monomials{D,P,S})(arg) where {D,P,S}

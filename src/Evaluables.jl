@@ -1,7 +1,7 @@
 module Evaluables
 
 using Base.Broadcast: broadcast_shape
-using Base.Iterators: flatten
+using Base.Iterators: drop, flatten
 using DataStructures: OrderedDict
 using StaticArrays: MArray, SArray, Scalar, SOneTo, SUnitRange, SVector, SMatrix
 using ..Elements: AbstractElement, elementdata

@@ -60,19 +60,14 @@ result of the full evaluation sequence if not given.
     syms = [gensym() for _ in 1:length(self)]
 
     argexprs = map(enumerate(seq)) do (i, tgt)
-        args = Union{Expr,Symbol}[syms[dep] for dep in I[tgt]]
-
-        blocktype = K.parameters[tgt]
-        for idx in Cpl.raw_args(blocktype)
-            args[idx] = :(TargetedEvalSeq(self, Val($(I[tgt][idx]))))
+        iraw = 0
+        special_args = map(Cpl.argspec(K.parameters[tgt])) do spec
+            spec in (:point, :locgrad, :evalargs) && return spec
+            spec == :rawarg && return :(TargetedEvalSeq(self, Val($(I[tgt][iraw+=1]))))
+            @assert false       # should be unreachable
         end
-
-        if Cpl.pass_evalargs(blocktype)
-            pushfirst!(args, :evalargs)
-            pushfirst!(args, :locgrad)
-            pushfirst!(args, :point)
-        end
-        return args
+        natural_args = Union{Expr,Symbol}[syms[dep] for dep in I[tgt]]
+        return [special_args..., drop(natural_args, iraw)...]
     end
 
     codes = map(zip(seq, syms[seq], argexprs)) do (i, sym, args)
@@ -99,7 +94,7 @@ end
 function _sequence!(ret, I, tgt, functypes)
     push!(ret, tgt)
     for (idx, dep) in enumerate(I[tgt])
-        idx in Cpl.raw_args(functypes[tgt]) && continue
+        idx <= count(==(:rawarg), Cpl.argspec(functypes[tgt])) && continue
         _sequence!(ret, I, dep, functypes)
     end
 end
