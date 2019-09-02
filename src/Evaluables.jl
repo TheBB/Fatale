@@ -15,7 +15,7 @@ import Base.Broadcast: materialize, Broadcasted
 import LinearAlgebra: dot, normalize, norm, norm_sqr
 import SparseArrays: nnz
 
-export evalorder, optimize, blocks
+export evalorder, optimize, blocks, workspace
 export local_point, local_grad, global_point, global_grad, grad, insertaxis, element_index, normal
 export Contract, Constant, ElementIntegral, Inflate, Monomials, Zeros
 

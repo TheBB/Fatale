@@ -47,6 +47,11 @@ end
 length(self::Type{<:EvalSeq{I}}) where I = length(I)
 length(self::EvalSeq{I}) where I = length(I)
 
+function workspace(self::EvalSeq{I,K}, n::Int) where {I,K}
+    seq = _sequence(I, n, K.parameters)
+    Cpl.Workspace(self.funcs[seq])
+end
+
 
 """
     (::EvalSeq)([index::Val{k},] evalargs::NamedTuple)
@@ -108,6 +113,7 @@ end
 
 TargetedEvalSeq(seq::EvalSeq) = TargetedEvalSeq(seq, Val(length(seq)))
 TargetedEvalSeq(func::Evaluable) = TargetedEvalSeq(EvalSeq(func))
+workspace(self::TargetedEvalSeq{S, Val{n}}) where {S,n} = workspace(self.sequence, n)
 
 @inline (self::TargetedEvalSeq)(point, locgrad, evalargs::NamedTuple) =
     self.sequence(self.target, point, locgrad, evalargs)
@@ -151,6 +157,7 @@ struct OptimizedEvaluable{T,N,S,F<:TargetedEvalSeq} <: AbstractOptimizedEvaluabl
 end
 
 codegen(self::OptimizedEvaluable) = self.sequence
+workspace(self::OptimizedEvaluable) = workspace(self.sequence)
 
 """
     (func::OptimizedEvaluable)(evalargs::NamedTuple)

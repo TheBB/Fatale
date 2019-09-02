@@ -20,6 +20,9 @@ before the natural arguments.
 """
 argspec(::Type{<:CompilationBlock}) = ()
 
+output(::CompilationBlock) = nothing
+scratch(::CompilationBlock) = nothing
+
 
 struct RawArg{N} <: CompilationBlock end
 argspec(::Type{<:RawArg}) = (:point, :locgrad, :evalargs)
@@ -173,5 +176,17 @@ contract_sizedict(args, inds) = OrderedDict(flatten(
     (k => v for (k, v) in zip(ind, size(arg)))
     for (arg, ind) in zip(args, inds)
 ))
+
+
+struct Workspace{A,B}
+    scratch :: A
+    output :: B
+
+    function Workspace(funcs::Tuple{Vararg{CompilationBlock}})
+        scr = scratch.(funcs)
+        out = output.(funcs)
+        new{typeof(scr), typeof(out)}(scr, out)
+    end
+end
 
 end # module
