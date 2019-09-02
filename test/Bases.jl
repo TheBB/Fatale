@@ -7,7 +7,8 @@
     @noallocs begin
         el = domain[1]
         qpt = @SVector [0.5]
-        @bench $basis($el, $qpt)
+        ws = workspace(basis)
+        @bench $basis($ws, $el, $qpt)
     end
 
     basis = optimize(local_basis(domain, Lagrange, 2))
@@ -17,7 +18,8 @@
     @noallocs begin
         el = domain[1]
         qpt = @SVector [0.5]
-        @bench $basis($el, $qpt)
+        ws = workspace(basis)
+        @bench $basis($ws, $el, $qpt)
     end
 
     basis = optimize(local_basis(domain, Lagrange, 3))
@@ -27,7 +29,8 @@
     @noallocs begin
         el = domain[1]
         qpt = @SVector [0.5]
-        @bench $basis($el, $qpt)
+        ws = workspace(basis)
+        @bench $basis($ws, $el, $qpt)
     end
 
     domain = TensorDomain(1, 1)
@@ -48,6 +51,7 @@
     @noallocs begin
         el = domain[1, 1]
         qpt = @SVector [0.5, 0.5]
-        @bench $basis($el, $qpt)
+        ws = workspace(basis)
+        @bench $basis($ws, $el, $qpt)
     end
 end

@@ -60,7 +60,7 @@ Evaluate an evaluation sequence at some collection of
 arguments. Returns the result of the function at index *k*, or the
 result of the full evaluation sequence if not given.
 """
-@generated function (self::EvalSeq{I,K})(::Val{N}, point, locgrad, evalargs::NamedTuple) where {N,I,K}
+@generated function (self::EvalSeq{I,K})(ws, ::Val{N}, point, locgrad, evalargs::NamedTuple) where {N,I,K}
     seq = _sequence(I, N, K.parameters)
     syms = [gensym() for _ in 1:length(self)]
 
@@ -85,9 +85,9 @@ result of the full evaluation sequence if not given.
     end
 end
 
-@generated (self::EvalSeq)(evalargs::NamedTuple) = quote
+@generated (self::EvalSeq)(ws, evalargs::NamedTuple) = quote
     @_inline_meta
-    self(Val($(length(self))), evalargs)
+    self(ws, Val($(length(self))), evalargs)
 end
 
 function _sequence(I, N, functypes)
@@ -115,10 +115,8 @@ TargetedEvalSeq(seq::EvalSeq) = TargetedEvalSeq(seq, Val(length(seq)))
 TargetedEvalSeq(func::Evaluable) = TargetedEvalSeq(EvalSeq(func))
 workspace(self::TargetedEvalSeq{S, Val{n}}) where {S,n} = workspace(self.sequence, n)
 
-@inline (self::TargetedEvalSeq)(point, locgrad, evalargs::NamedTuple) =
-    self.sequence(self.target, point, locgrad, evalargs)
-
-pass_evalargs(::Type{TargetedEvalSeq}) = true
+@inline (self::TargetedEvalSeq)(ws, point, locgrad, evalargs::NamedTuple) =
+    self.sequence(ws, self.target, point, locgrad, evalargs)
 
 
 # ==============================================================================
@@ -167,17 +165,20 @@ Evaluate an optimized evaluable with a collection of input arguments.
 The second call is equivalent to a minimal argument tuple with
 *element* and *coords* (the latter of which may be Nothing).
 """
-@inline (self::OptimizedEvaluable)(element::Maybe{AbstractElement}, quadpt::Nothing) =
-    self(nothing, nothing, (element=element,))
+@inline (self::OptimizedEvaluable)(element::Maybe{AbstractElement}, quadpt::Maybe{SVector}) =
+    self(workspace(self), element, quadpt)
 
-@inline function (self::OptimizedEvaluable)(element::AbstractElement, quadpt::SVector)
+@inline (self::OptimizedEvaluable)(ws::Maybe{Cpl.Workspace}, element::Maybe{AbstractElement}, quadpt::Nothing) =
+    self(ws, nothing, nothing, (element=element,))
+
+@inline function (self::OptimizedEvaluable)(ws::Maybe{Cpl.Workspace}, element::AbstractElement, quadpt::SVector)
     trans = elementdata(element, Val{:loctrans}())
     point, locgrad = apply(trans, (point=quadpt, grad=nothing))
-    self(point, locgrad, (element=element,))
+    self(ws, point, locgrad, (element=element,))
 end
 
-@inline (self::OptimizedEvaluable)(point::Maybe{SVector}, locgrad::Maybe{SMatrix}, evalargs::NamedTuple) =
-    self.sequence(point, locgrad, evalargs)
+@inline (self::OptimizedEvaluable)(ws::Maybe{Cpl.Workspace}, point::Maybe{SVector}, locgrad::Maybe{SMatrix}, evalargs::NamedTuple) =
+    self.sequence(ws, point, locgrad, evalargs)
 
 
 # A block is a dense array (an OptimizedEvaluable) together with a

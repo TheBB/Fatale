@@ -60,7 +60,7 @@ struct GetIndex{T} <: CompilationBlock end
 struct Gradient{S} <: CompilationBlock end
 argspec(::Type{<:Gradient}) = (:point, :locgrad, :evalargs, :rawarg)
 @inline function (::Gradient{S})(point, locgrad, evalargs, arg) where S
-    subgrad = transpose(jacobian(x -> arg(x, locgrad, evalargs), point))
+    subgrad = transpose(jacobian(x -> arg(nothing, x, locgrad, evalargs), point))
     return SArray{Tuple{S...}}(subgrad)
 end
 
@@ -98,7 +98,7 @@ argspec(::Type{<:ElementIntegral}) = (:evalargs, :rawarg)
     (pts, wts) = quadrule
     for (pt, wt) in zip(pts, wts)
         point, locgrad = apply(loctrans, (point=pt, grad=nothing))
-        temp = temp .+ sub(point, locgrad, args) .* wt
+        temp = temp .+ sub(nothing, point, locgrad, args) .* wt
     end
     temp
 end

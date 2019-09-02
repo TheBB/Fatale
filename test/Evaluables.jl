@@ -15,11 +15,8 @@
     @test @inferred(func(sub, quadpt)) == [quadpt[1], 5.0]
 
     @noallocs begin
-        func = optimize(local_point(2))
-        element = Element(shift(@SVector rand(2)))
-        sub = SubElement(updim(Val(2), 2, 5.0), element)
-        quadpt = @SVector rand(1)
-        @bench $func($sub, $quadpt)
+        ws = workspace(func)
+        @bench $func($ws, $sub, $quadpt)
     end
 end
 
@@ -42,11 +39,8 @@ end
     @test @inferred(func(sub, quadpt)) ≈ [quadpt[1], 4.0] + offset
 
     @noallocs begin
-        func = optimize(global_point(2))
-        element = Element(shift(@SVector rand(2)))
-        sub = SubElement(updim(Val(2), 2, 5.0), element)
-        quadpt = @SVector rand(1)
-        @bench $func($sub, $quadpt)
+        ws = workspace(func)
+        @bench $func($ws, $sub, $quadpt)
     end
 end
 
@@ -65,7 +59,8 @@ end
     @test @inferred(func(nothing, nothing)) ≈ .+(arr1, arr2, arr3)
 
     @noallocs begin
-        @bench $func(nothing, nothing)
+        ws = workspace(func)
+        @bench $func($ws, nothing, nothing)
     end
 end
 
@@ -98,7 +93,8 @@ end
     @test @inferred(func(nothing, nothing)) ≈ mx3' * mx1 * mx2
 
     @noallocs begin
-        @bench $func(nothing, nothing)
+        ws = workspace(func)
+        @bench $func($ws, nothing, nothing)
     end
 end
 
@@ -110,25 +106,25 @@ end
     @test @inferred(func(nothing, nothing)) == data
 
     @noallocs begin
-        data = @SArray rand(3,4,5)
-        func = optimize(Constant(data))
-        @bench $func(nothing, nothing)
+        ws = workspace(func)
+        @bench $func($ws, nothing, nothing)
     end
 end
 
 
 @testset "ElementIntegral" begin
     func = optimize(ElementIntegral(global_point(2)))
+    ws = workspace(func)
     quadrule = (
         [SVector(0.25, 0.25), SVector(0.75, 0.25), SVector(0.25, 0.75), SVector(0.75, 0.75)],
         [0.25, 0.25, 0.25, 0.25]
     )
 
     element = Element(Empty(2))
-    @test @inferred(func(nothing, nothing, (quadrule=quadrule, element=element))) ≈ [0.5, 0.5]
+    @test @inferred(func(ws, nothing, nothing, (quadrule=quadrule, element=element))) ≈ [0.5, 0.5]
 
     element = Element(shift(SVector(2.0, 3.0)))
-    @test @inferred(func(nothing, nothing, (quadrule=quadrule, element=element))) ≈ [2.5, 3.5]
+    @test @inferred(func(ws, nothing, nothing, (quadrule=quadrule, element=element))) ≈ [2.5, 3.5]
 end
 
 
@@ -143,7 +139,8 @@ end
     @test res == data[1, :, :]
 
     @noallocs begin
-        @bench $func(nothing, nothing)
+        ws = workspace(func)
+        @bench $func($ws, nothing, nothing)
     end
 
     ufunc = DummyConstant(data)[3, :, 4]
@@ -153,7 +150,8 @@ end
     @test res == data[3, :, 4]
 
     @noallocs begin
-        @bench $func(nothing, nothing)
+        ws = workspace(func)
+        @bench $func($ws, nothing, nothing)
     end
 
     ufunc = DummyConstant(data)[:, 2, :]
@@ -163,7 +161,8 @@ end
     @test res == data[:, 2, :]
 
     @noallocs begin
-        @bench $func(nothing, nothing)
+        ws = workspace(func)
+        @bench $func($ws, nothing, nothing)
     end
 
     ufunc = DummyConstant(data)[1:end-1, 3, :]
@@ -173,7 +172,8 @@ end
     @test res == data[1:end-1, 3, :]
 
     @noallocs begin
-        @bench $func(nothing, nothing)
+        ws = workspace(func)
+        @bench $func($ws, nothing, nothing)
     end
 end
 
@@ -194,9 +194,8 @@ end
     @test @inferred(func(nothing, nothing)) ≈ inv(data)
 
     @noallocs begin
-        data = @SArray rand(3,3)
-        func = optimize(inv(DummyConstant(data)))
-        @bench $func(nothing, nothing)
+        ws = workspace(func)
+        @bench $func($ws, nothing, nothing)
     end
 end
 
@@ -216,7 +215,8 @@ end
         func = optimize(Monomials(local_point(3), 4))
         element = Element(3)
         quadpt = @SVector [1.0, 2.0, 3.0]
-        @bench $func($element, $quadpt)
+        ws = workspace(func)
+        @bench $func($ws, $element, $quadpt)
     end
 end
 
@@ -235,7 +235,8 @@ end
     @test @inferred(func(nothing, nothing)) ≈ .*(arr1, arr2, arr3)
 
     @noallocs begin
-        @bench $func(nothing, nothing)
+        ws = workspace(func)
+        @bench $func($ws, nothing, nothing)
     end
 end
 
@@ -247,7 +248,8 @@ end
     @test @inferred(func(nothing, nothing)) == -data
 
     @noallocs begin
-        @bench $func(nothing, nothing)
+        ws = workspace(func)
+        @bench $func($ws, nothing, nothing)
     end
 end
 
@@ -257,7 +259,8 @@ end
     @test @inferred(func(nothing, nothing)) == SOneTo(9)
 
     @noallocs begin
-        @bench $func(nothing, nothing)
+        ws = workspace(func)
+        @bench $func($ws, nothing, nothing)
     end
 end
 
@@ -271,7 +274,8 @@ end
     @test @inferred(func(nothing, nothing)) == permutedims(data, (2, 1, 3))
 
     @noallocs begin
-        @bench $func(nothing, nothing)
+        ws = workspace(func)
+        @bench $func($ws, nothing, nothing)
     end
 end
 
@@ -284,7 +288,8 @@ end
     @test @inferred(func(nothing, nothing)) ≈ data .^ 3.1
 
     @noallocs begin
-        @bench $func(nothing, nothing)
+        ws = workspace(func)
+        @bench $func($ws, nothing, nothing)
     end
 end
 
@@ -297,7 +302,8 @@ end
     @test @inferred(func(nothing, nothing)) ≈ 1 ./ data
 
     @noallocs begin
-        @bench $func(nothing, nothing)
+        ws = workspace(func)
+        @bench $func($ws, nothing, nothing)
     end
 end
 
@@ -317,7 +323,8 @@ end
 
     @noallocs begin
         func = optimize(reshape(DummyConstant(arr), 3, 7, 5))
-        @bench $func(nothing, nothing)
+        ws = workspace(func)
+        @bench $func($ws, nothing, nothing)
     end
 end
 
@@ -330,7 +337,8 @@ end
     @test @inferred(func(nothing, nothing)) ≈ sqrt.(data)
 
     @noallocs begin
-        @bench $func(nothing, nothing)
+        ws = workspace(func)
+        @bench $func($ws, nothing, nothing)
     end
 end
 
@@ -343,21 +351,24 @@ end
     @test @inferred(func(nothing, nothing)) ≈ sum(arr; dims=1)
 
     @noallocs begin
-        @bench $func(nothing, nothing)
+        ws = workspace(func)
+        @bench $func($ws, nothing, nothing)
     end
 
     func = optimize(sum(DummyConstant(arr); dims=(1,2)))
     @test @inferred(func(nothing, nothing)) ≈ sum(Array(arr); dims=(1,2))
 
     @noallocs begin
-        @bench $func(nothing, nothing)
+        ws = workspace(func)
+        @bench $func($ws, nothing, nothing)
     end
 
     func = optimize(sum(DummyConstant(arr); dims=(1,2), collapse=true))
     @test @inferred(func(nothing, nothing)) ≈ dropdims(sum(Array(arr); dims=(1,2)); dims=(1,2))
 
     @noallocs begin
-        @bench $func(nothing, nothing)
+        ws = workspace(func)
+        @bench $func($ws, nothing, nothing)
     end
 
     func = optimize(sum(DummyConstant(arr); collapse=true))
@@ -371,6 +382,7 @@ end
     @test @inferred(func(nothing, nothing)) == zeros(Float64, 3, 5, 7)
 
     @noallocs begin
-        @bench $func(nothing, nothing)
+        ws = workspace(func)
+        @bench $func($ws, nothing, nothing)
     end
 end

@@ -6,7 +6,7 @@ using Strided: UnsafeStridedView, sreshape, StridedView
 
 using ..Elements: elementdata
 using ..Evaluables: OptimizedEvaluable, OptimizedBlockEvaluable, OptimizedSparseEvaluable
-using ..Evaluables: ArrayEvaluable, optimize
+using ..Evaluables: ArrayEvaluable, optimize, workspace
 using ..Transforms: Empty, apply, splittrf
 
 export integrate, to
@@ -49,11 +49,12 @@ integrate(func::ArrayEvaluable, domain, args::NamedTuple) = integrate(optimize(f
 function integrate(func::OptimizedEvaluable, domain, args::NamedTuple)
     data = zeros(eltype(func), size(func))
     (pts, wts) = args.quadrule
+    ws = workspace(func)
     for element in domain
         loctrans = elementdata(element, Val(:loctrans))
         for (pt, wt) in zip(pts, wts)
             point, locgrad = apply(loctrans, (point=pt, grad=nothing))
-            data .+= func(point, locgrad, (element=element, args...)) .* wt
+            data .+= func(ws, point, locgrad, (element=element, args...)) .* wt
         end
     end
     data
@@ -73,13 +74,15 @@ end
 
 function _integrate(block::OptimizedBlockEvaluable{1}, domain, args, V)
     (pts, wts) = args.quadrule
+    wsi = workspace(block.indices[1])
+    ws = workspace(block.data)
     for (i, element) in enumerate(domain)
-        I = block.indices[1](element, nothing)
+        I = block.indices[1](wsi, element, nothing)
         _t, loctrans = splittrf(elementdata(element, Val(:loctrans)))
         @assert _t isa Empty
         for (pt, wt) in zip(pts, wts)
             point, locgrad = apply(loctrans, (point=pt, grad=nothing))
-            V[I] .+= block.data(point, locgrad, (element=element, args...)) .* wt
+            V[I] .+= block.data(ws, point, locgrad, (element=element, args...)) .* wt
         end
     end
 end
@@ -112,14 +115,17 @@ end
 
 function _integrate(block::OptimizedBlockEvaluable{2}, domain, args, I, J, V)
     (pts, wts) = args.quadrule
+    wsi = workspace(block.indices[1])
+    wsj = workspace(block.indices[2])
+    ws = workspace(block.data)
     for (i, element) in enumerate(domain)
-        I[:,:,i] .= block.indices[1](element, nothing)
-        J[:,:,i] .= block.indices[2](element, nothing)
+        I[:,:,i] .= block.indices[1](wsi, element, nothing)
+        J[:,:,i] .= block.indices[2](wsj, element, nothing)
         _t, loctrans = splittrf(elementdata(element, Val(:loctrans)))
         @assert _t isa Empty
         for (pt, wt) in zip(pts, wts)
             point, locgrad = apply(loctrans, (point=pt, grad=nothing))
-            V[:,:,i] .+= block.data(point, locgrad, (element=element, args...)) .* wt
+            V[:,:,i] .+= block.data(ws, point, locgrad, (element=element, args...)) .* wt
         end
     end
 end
