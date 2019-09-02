@@ -68,6 +68,8 @@ result of the full evaluation sequence if not given.
         iraw = 0
         special_args = map(Cpl.argspec(K.parameters[tgt])) do spec
             spec in (:point, :locgrad, :evalargs) && return spec
+            spec == :scratch && return :(ws.scratch[$i])
+            spec == :output && return :(ws.output[$i])
             spec == :rawarg && return :(TargetedEvalSeq(self, Val($(I[tgt][iraw+=1]))))
             @assert false       # should be unreachable
         end
